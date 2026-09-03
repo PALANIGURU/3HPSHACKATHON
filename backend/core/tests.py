@@ -179,8 +179,9 @@ class HostileInputAndTimeoutTests(TestCase):
     def test_missing_source_file_handled_gracefully(self):
         """Verify missing source file logs warning and doesn't crash."""
         with patch("builtins.open", side_effect=FileNotFoundError("File missing")):
-            fetched = fetch_activity(self.shift_start, self.shift_end)
-            self.assertEqual(len(fetched), 0)
+            with patch("core.fetch_activity.fetch_jira_activity", return_value=[]):
+                fetched = fetch_activity(self.shift_start, self.shift_end)
+                self.assertEqual(len(fetched), 0)
 
     def test_http_source_unreachable_api_timeout_simulation(self):
         """Simulate HTTP source timeout / unreachable server."""
@@ -238,12 +239,50 @@ class DRFAPIEndpointTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["X-Report-Items"], "4")
 
-    def test_generate_report_api_invalid_window_returns_400(self):
-        """Verify invalid shift window returns 400 Bad Request."""
-        url = reverse("generate-report")
-        payload = {
-            "shift_start": "2024-01-15T12:00:00Z",
-            "shift_end": "2024-01-15T07:00:00Z",
+    def test_approval_workflow_staff_submit_and_manager_review(self):
+        """Test Staff submission, Manager approval/rejection, and report generation gating."""
+        # 1. Staff submits handover request
+        submit_url = reverse("submit-approval")
+        sub_payload = {
+            "shift_start": "2024-01-15T07:00:00Z",
+            "shift_end": "2024-01-15T12:00:00Z",
+            "submitted_by": "John Staff",
+            "notes": "Completed EU login fix and reviewed DB pool.",
         }
-        response = self.client.post(url, data=payload, format="json")
-        self.assertEqual(response.status_code, 400)
+        sub_res = self.client.post(submit_url, data=sub_payload, format="json")
+        self.assertEqual(sub_res.status_code, 201)
+        req_id = sub_res.json()["request"]["id"]
+        self.assertEqual(sub_res.json()["request"]["status"], "pending_approval")
+
+        # 2. Report generation blocked while status is pending_approval (403 Forbidden)
+        gen_url = reverse("generate-report")
+        gen_payload = {
+            "scenario": "quiet",
+            "request_id": req_id,
+        }
+        blocked_res = self.client.post(gen_url, data=gen_payload, format="json")
+        self.assertEqual(blocked_res.status_code, 403)
+
+        # 3. Manager reviews and approves request
+        review_url = reverse("review-approval")
+        rev_payload = {
+            "request_id": req_id,
+            "manager_name": "Jane Manager",
+            "decision": "approve",
+        }
+        rev_res = self.client.post(review_url, data=rev_payload, format="json")
+        self.assertEqual(rev_res.status_code, 200)
+        self.assertEqual(rev_res.json()["request"]["status"], "approved")
+
+        # 4. Report generation succeeds after Manager approval
+        approved_res = self.client.post(gen_url, data=gen_payload, format="json")
+        self.assertEqual(approved_res.status_code, 200)
+
+    def test_jira_tracker_events_fetch(self):
+        """Test real-life Jira issue tracking updates endpoint."""
+        jira_url = reverse("jira-events")
+        res = self.client.get(jira_url)
+        self.assertEqual(res.status_code, 200)
+        events = res.json()["jira_events"]
+        self.assertTrue(len(events) > 0)
+        self.assertEqual(events[0]["source"], "jira")

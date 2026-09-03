@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any
 
 from .http_source import fetch_http_source
+from .jira_tracker import fetch_jira_activity
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +122,14 @@ def fetch_activity(
                 raw = fetch_http_source(url, timeout=timeout)
                 if raw:
                     all_events.extend(_process_event_list(raw, url, shift_start, shift_end))
+
+        # Fetch real-life Jira issue & worklog events
+        try:
+            jira_events = fetch_jira_activity(shift_start, shift_end)
+            if jira_events:
+                all_events.extend(_process_event_list(jira_events, "jira", shift_start, shift_end))
+        except Exception as exc:
+            logger.warning("Error fetching Jira tracking events: %s", exc)
 
     # Incorporate previous shift carry-forward snapshot (stretch feature)
     # Filtered to items prior to shift_end AND within 24 hours prior to shift_start to prevent indefinite resurfacing

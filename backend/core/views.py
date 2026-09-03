@@ -15,8 +15,90 @@ from .fetch_activity import fetch_activity
 from .generator import generate_sections, summarize_sections, generate_slack_summary
 from .publisher import render_docx
 from .shared_utils import parse_utc, validate_shift_window, load_scenario
+from .jira_tracker import fetch_jira_activity
+from .approval_workflow import (
+    submit_for_approval,
+    review_handover_request,
+    list_approval_requests,
+    check_approval_status,
+)
 
 logger = logging.getLogger(__name__)
+
+
+@api_view(["POST"])
+def submit_approval(request: Request):
+    """
+    POST /api/approvals/submit/
+    Staff action: Submit shift handover report for Manager approval.
+    """
+    try:
+        body = json.loads(request.body) if request.body else {}
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON body."}, status=400)
+
+    shift_start = body.get("shift_start")
+    shift_end = body.get("shift_end")
+    submitted_by = body.get("submitted_by", "Staff Member")
+    notes = body.get("notes", "")
+    scenario = body.get("scenario")
+
+    if not shift_start or not shift_end:
+        return JsonResponse({"error": "shift_start and shift_end are required."}, status=400)
+
+    req = submit_for_approval(
+        shift_start=shift_start,
+        shift_end=shift_end,
+        submitted_by=submitted_by,
+        notes=notes,
+        scenario=scenario,
+    )
+    return JsonResponse({"status": "submitted", "request": req}, status=201)
+
+
+@api_view(["POST"])
+def review_approval(request: Request):
+    """
+    POST /api/approvals/review/
+    Manager action: Approve or reject a submitted shift handover request.
+    """
+    try:
+        body = json.loads(request.body) if request.body else {}
+    except json.JSONDecodeError:
+        return JsonResponse({"error": "Invalid JSON body."}, status=400)
+
+    request_id = body.get("request_id")
+    manager_name = body.get("manager_name", "Manager")
+    decision = body.get("decision")  # 'approve' or 'reject'
+    reason = body.get("reason", "")
+
+    if not request_id or not decision:
+        return JsonResponse({"error": "request_id and decision are required."}, status=400)
+
+    try:
+        updated_req = review_handover_request(
+            request_id=request_id,
+            manager_name=manager_name,
+            decision=decision,
+            reason=reason,
+        )
+        return JsonResponse({"status": "reviewed", "request": updated_req})
+    except ValueError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
+
+
+@api_view(["GET"])
+def list_approvals(request: Request):
+    """GET /api/approvals/list/ — List all handover approval requests."""
+    reqs = list_approval_requests()
+    return JsonResponse({"requests": reqs})
+
+
+@api_view(["GET"])
+def get_jira_events(request: Request):
+    """GET /api/jira/events/ — Live Jira issue tracking updates."""
+    events = fetch_jira_activity()
+    return JsonResponse({"jira_events": events, "count": len(events)})
 
 
 @api_view(["POST"])
@@ -32,6 +114,21 @@ def generate_report(request: Request):
 
     scenario = (body.get("scenario") or "").strip().lower() or None
     export_format = (body.get("format") or "docx").strip().lower()
+    request_id = body.get("request_id")
+
+    # Manager Approval Gating check
+    if request_id:
+        req_status = check_approval_status(request_id)
+        if not req_status:
+            return JsonResponse({"error": f"Approval request '{request_id}' not found."}, status=404)
+        if req_status.get("status") != "approved":
+            return JsonResponse(
+                {
+                    "error": f"Report generation blocked. Handover request '{request_id}' status is '{req_status.get('status')}'. Manager approval is required before output generation.",
+                    "approval_status": req_status.get("status"),
+                },
+                status=403,
+            )
 
     try:
         if scenario:

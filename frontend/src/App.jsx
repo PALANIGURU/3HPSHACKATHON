@@ -19,30 +19,36 @@ import {
   FiCheckSquare,
   FiRefreshCw,
   FiEye,
-  FiLayers
+  FiLayers,
+  FiUserCheck,
+  FiUser,
+  FiSend,
+  FiCheck,
+  FiX,
+  FiTrello,
+  FiLock,
+  FiUnlock
 } from 'react-icons/fi'
 
-/* ─── Step Icons Configuration ────────────────────────────────────────── */
 const STEPS_CONFIG = [
-  { id: 'validate', label: 'Validating parameters',     icon: FiZap },
-  { id: 'fetch',    label: 'Fetching activity data',    icon: FiRadio },
-  { id: 'dedup',    label: 'Deduplicating events',      icon: FiShuffle },
-  { id: 'section',  label: 'Applying sectioning rules', icon: FiClipboard },
-  { id: 'render',   label: 'Rendering .docx report',   icon: FiFileText },
-  { id: 'finalise', label: 'Finalising and packaging',  icon: FiPackage },
+  { id: 'validate', label: 'Validating parameters & approval status', icon: FiZap },
+  { id: 'fetch',    label: 'Fetching activity data & Jira worklogs', icon: FiRadio },
+  { id: 'dedup',    label: 'Deduplicating events',                    icon: FiShuffle },
+  { id: 'section',  label: 'Applying sectioning rules',               icon: FiClipboard },
+  { id: 'render',   label: 'Rendering .docx report',                 icon: FiFileText },
+  { id: 'finalise', label: 'Finalising and packaging',                icon: FiPackage },
 ]
 
 const SCENARIOS = [
-  { id: '',       icon: FiSliders,     name: 'Live Data', desc: 'Read from sources.json' },
-  { id: 'quiet',  icon: FiMoon,        name: 'Quiet',     desc: 'Minimal activity' },
-  { id: 'busy',   icon: FiTrendingUp,  name: 'Busy',      desc: 'All 4 sections' },
-  { id: 'messy',  icon: FiCompass,     name: 'Messy',     desc: 'Duplicates + chaos' },
+  { id: '',       icon: FiSliders,    name: 'Live Data', desc: 'Read from sources.json & Jira' },
+  { id: 'quiet',  icon: FiMoon,       name: 'Quiet',     desc: 'Minimal activity' },
+  { id: 'busy',   icon: FiTrendingUp, name: 'Busy',      desc: 'All 4 sections' },
+  { id: 'messy',  icon: FiCompass,    name: 'Messy',     desc: 'Duplicates + chaos' },
 ]
 
 const DEFAULT_START = '2024-01-15T07:00:00Z'
 const DEFAULT_END   = '2024-01-15T12:00:00Z'
 
-/* ─── Helper: download base64 file ────────────────────────────────────── */
 function downloadB64(b64, filename) {
   const bytes = atob(b64)
   const arr   = new Uint8Array(bytes.length)
@@ -54,7 +60,6 @@ function downloadB64(b64, filename) {
   URL.revokeObjectURL(url)
 }
 
-/* ─── Sub-components ───────────────────────────────────────────────────── */
 function StepStatusIcon({ status }) {
   if (status === 'running') return <FiRefreshCw className="spin-icon" />
   if (status === 'done')    return <FiCheckCircle />
@@ -106,29 +111,57 @@ function StatsBar({ counts }) {
   )
 }
 
-/* ─── Main App ─────────────────────────────────────────────────────────── */
 export default function App() {
+  const [role,       setRole]       = useState('staff') // 'staff' | 'manager'
   const [shiftStart, setShiftStart] = useState(DEFAULT_START)
   const [shiftEnd,   setShiftEnd]   = useState(DEFAULT_END)
   const [scenario,   setScenario]   = useState('busy')
+  const [userName,   setUserName]   = useState('John (Shift Engineer)')
+  const [notes,      setNotes]      = useState('EU 500 error fix deployed; database pool connection resolved.')
+  
   const [running,    setRunning]    = useState(false)
   const [stepStates, setStepStates] = useState({})
   const [pct,        setPct]        = useState(0)
   const [logLines,   setLogLines]   = useState([])
   const [result,     setResult]     = useState(null)
   const [backendOk,  setBackendOk]  = useState(null)
+  
+  const [approvals,  setApprovals]  = useState([])
+  const [jiraEvents, setJiraEvents] = useState([])
+  const [selectedReq, setSelectedReq] = useState(null)
 
   const logRef = useRef(null)
 
-  /* Health check */
+  const fetchApprovals = useCallback(async () => {
+    try {
+      const res = await fetch('/api/approvals/list/')
+      if (res.ok) {
+        const data = await res.json()
+        setApprovals(data.requests || [])
+      }
+    } catch (e) {}
+  }, [])
+
+  const fetchJira = useCallback(async () => {
+    try {
+      const res = await fetch('/api/jira/events/')
+      if (res.ok) {
+        const data = await res.json()
+        setJiraEvents(data.jira_events || [])
+      }
+    } catch (e) {}
+  }, [])
+
   useEffect(() => {
     setBackendOk(null)
     fetch('/api/health/')
       .then(r => r.ok ? setBackendOk(true) : setBackendOk(false))
       .catch(() => setBackendOk(false))
-  }, [])
 
-  /* Auto-scroll log */
+    fetchApprovals()
+    fetchJira()
+  }, [fetchApprovals, fetchJira])
+
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [logLines])
@@ -145,6 +178,55 @@ export default function App() {
     setLogLines([])
   }, [])
 
+  // Staff action: Submit handover for approval
+  const handleStaffSubmit = async () => {
+    try {
+      const res = await fetch('/api/approvals/submit/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          shift_start: shiftStart,
+          shift_end: shiftEnd,
+          submitted_by: userName,
+          notes,
+          scenario,
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        addLog(`Handover submitted for approval! Request ID: ${data.request.id}`, 'success')
+        fetchApprovals()
+      } else {
+        addLog('Failed to submit handover request.', 'error')
+      }
+    } catch (err) {
+      addLog(`Submit error: ${err.message}`, 'error')
+    }
+  }
+
+  // Manager action: Approve or reject
+  const handleManagerReview = async (reqId, decision) => {
+    try {
+      const res = await fetch('/api/approvals/review/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          request_id: reqId,
+          manager_name: 'Manager (Jane Doe)',
+          decision,
+          reason: decision === 'reject' ? 'Needs additional details on database pool status.' : '',
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        addLog(`Request ${reqId} ${decision.toUpperCase()}ED by Manager`, 'success')
+        fetchApprovals()
+      }
+    } catch (err) {
+      addLog(`Review error: ${err.message}`, 'error')
+    }
+  }
+
   const handleGenerate = useCallback(async () => {
     if (running) return
     reset()
@@ -153,6 +235,7 @@ export default function App() {
 
     const body = { shift_start: shiftStart, shift_end: shiftEnd }
     if (scenario) body.scenario = scenario
+    if (selectedReq) body.request_id = selectedReq.id
 
     try {
       const response = await fetch('/api/generate-report/stream/', {
@@ -204,9 +287,7 @@ export default function App() {
               setRunning(false)
               return
             }
-          } catch (e) {
-            /* ignore unparseable lines */
-          }
+          } catch (e) {}
         }
       }
     } catch (err) {
@@ -214,7 +295,7 @@ export default function App() {
     } finally {
       setRunning(false)
     }
-  }, [running, shiftStart, shiftEnd, scenario, reset, addLog])
+  }, [running, shiftStart, shiftEnd, scenario, selectedReq, reset, addLog])
 
   const finalCounts = (() => {
     if (result?.summary?.counts) return result.summary.counts
@@ -243,35 +324,146 @@ export default function App() {
         <div className="header-logo">3H</div>
         <div>
           <div className="header-title">Shift Handover Generator</div>
-          <div className="header-sub">Liquid Glass Monochrome Edition</div>
+          <div className="header-sub">Role-Based Approval & Real-Life Jira Tracker</div>
         </div>
-        <div className="header-badge">
-          <span
-            className={`status-dot ${
-              backendOk === null ? 'checking' : backendOk ? 'online' : 'offline'
-            }`}
-          />
-          {backendOk === null ? 'Connecting...' : backendOk ? 'Backend Online' : 'Backend Offline'}
+
+        {/* Role Selector */}
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className="scenario-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+            <button
+              className={`count-pill ${role === 'staff' ? 'active' : ''}`}
+              style={{ padding: '6px 14px', cursor: 'pointer', background: role === 'staff' ? '#ffffff' : 'transparent', color: role === 'staff' ? '#000000' : '#ffffff' }}
+              onClick={() => setRole('staff')}
+            >
+              <FiUser /> Staff Mode
+            </button>
+            <button
+              className={`count-pill ${role === 'manager' ? 'active' : ''}`}
+              style={{ padding: '6px 14px', cursor: 'pointer', background: role === 'manager' ? '#ffffff' : 'transparent', color: role === 'manager' ? '#000000' : '#ffffff' }}
+              onClick={() => setRole('manager')}
+            >
+              <FiUserCheck /> Manager Mode
+            </button>
+          </div>
+          <div className="header-badge">
+            <span className={`status-dot ${backendOk === null ? 'checking' : backendOk ? 'online' : 'offline'}`} />
+            {backendOk ? 'Online' : 'Offline'}
+          </div>
         </div>
       </header>
 
       <main className="main">
-        {/* ── Hero ───────────────────────────────────────────────────────── */}
         <section className="hero">
           <div className="hero-tag">
-            <FiActivity /> Real-Time Engine
+            {role === 'staff' ? <><FiUser /> Staff Workspace</> : <><FiUserCheck /> Manager Review Portal</>}
           </div>
-          <h1>Shift Handover Report</h1>
+          <h1>{role === 'staff' ? 'Draft & Submit Handover' : 'Manager Handover Approval Portal'}</h1>
           <p>
-            Generate reproducible .docx shift handover reports with real-time liquid progress updates and strict boundary window enforcement.
+            {role === 'staff'
+              ? 'Staff members draft shift handover notes, track live Jira worklogs, and submit handovers for Manager review.'
+              : 'Managers review submitted shift handovers, approve or request revisions, and trigger final .docx report exports.'}
           </p>
         </section>
 
-        {/* ── Config card ─────────────────────────────────────────────────── */}
+        {/* ── Real-Life Jira Tracker Box ──────────────────────────────────── */}
+        <div className="card">
+          <div className="card-title">
+            <FiTrello className="card-title-icon" /> Real-Life Jira Issue & Worklog Tracker
+          </div>
+          <div className="activity-log" style={{ maxHeight: 130 }}>
+            {jiraEvents.map((j, idx) => (
+              <div key={idx} className="log-line" style={{ justifyContent: 'space-between' }}>
+                <span className="log-msg info"><strong>[{j.record_id}]</strong> {j.summary}</span>
+                <span className="count-pill" style={{ fontSize: 10, padding: '2px 8px' }}>{j.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Approval Requests List for Manager / Staff ─────────────────── */}
+        <div className="card">
+          <div className="card-title">
+            <FiUserCheck className="card-title-icon" /> Shift Handover Approval Requests
+          </div>
+
+          {approvals.length === 0 ? (
+            <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No approval requests submitted yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {approvals.map(req => (
+                <div
+                  key={req.id}
+                  style={{
+                    padding: 14,
+                    background: selectedReq?.id === req.id ? 'rgba(255,255,255,0.1)' : 'rgba(255,255,255,0.02)',
+                    border: '1px solid var(--glass-border)',
+                    borderRadius: 'var(--radius-md)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {req.status === 'approved' ? <FiUnlock style={{ color: '#ffffff' }} /> : <FiLock style={{ color: 'var(--text-muted)' }} />}
+                      {req.id} — Submitted by {req.submitted_by}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-secondary)', marginTop: 4 }}>
+                      Window: {req.shift_start} → {req.shift_end} | Notes: {req.notes || 'None'}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <span className="count-pill" style={{ textTransform: 'uppercase', fontSize: 10 }}>
+                      {req.status}
+                    </span>
+
+                    {role === 'manager' && req.status === 'pending_approval' && (
+                      <>
+                        <button
+                          className="btn-download"
+                          style={{ margin: 0, padding: '6px 12px', fontSize: 12 }}
+                          onClick={() => handleManagerReview(req.id, 'approve')}
+                        >
+                          <FiCheck /> Approve
+                        </button>
+                        <button
+                          className="btn-download"
+                          style={{ margin: 0, padding: '6px 12px', fontSize: 12, background: 'rgba(255,255,255,0.05)' }}
+                          onClick={() => handleManagerReview(req.id, 'reject')}
+                        >
+                          <FiX /> Reject
+                        </button>
+                      </>
+                    )}
+
+                    {req.status === 'approved' && (
+                      <button
+                        className="btn-download"
+                        style={{ margin: 0, padding: '6px 12px', fontSize: 12 }}
+                        onClick={() => {
+                          setSelectedReq(req)
+                          setShiftStart(req.shift_start)
+                          setShiftEnd(req.shift_end)
+                          if (req.scenario) setScenario(req.scenario)
+                          addLog(`Selected approved request ${req.id} for report generation.`, 'info')
+                        }}
+                      >
+                        Select to Generate
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* ── Form & Action Card ─────────────────────────────────────────── */}
         <div className="card">
           <div className="card-title">
             <FiSliders className="card-title-icon" />
-            Configuration & Shift Window
+            {role === 'staff' ? 'Draft Handover & Submit to Manager' : 'Generate Approved Report'}
           </div>
 
           <div className="form-grid">
@@ -297,6 +489,20 @@ export default function App() {
                 disabled={running}
               />
             </div>
+
+            {role === 'staff' && (
+              <>
+                <div className="field">
+                  <label>Staff Member Name</label>
+                  <input type="text" value={userName} onChange={e => setUserName(e.target.value)} />
+                </div>
+                <div className="field">
+                  <label>Shift Handover Notes / Summary</label>
+                  <input type="text" value={notes} onChange={e => setNotes(e.target.value)} />
+                </div>
+              </>
+            )}
+
             <div className="field form-grid-full">
               <label>Data Scenario / Source</label>
               <div className="scenario-grid">
@@ -305,7 +511,6 @@ export default function App() {
                   return (
                     <div
                       key={sc.id}
-                      id={`scenario-${sc.id || 'live'}`}
                       className={`scenario-card ${scenario === sc.id ? 'active' : ''}`}
                       onClick={() => !running && setScenario(sc.id)}
                     >
@@ -319,21 +524,32 @@ export default function App() {
             </div>
           </div>
 
-          <button
-            id="btn-generate"
-            className="btn-generate"
-            onClick={handleGenerate}
-            disabled={running || backendOk === false}
-            style={{ marginTop: 24 }}
-          >
-            {running ? (
-              <><FiRefreshCw className="spin-icon" /> Generating… {pct}%</>
-            ) : overallDone ? (
-              <><FiCheckCircle /> Generate Again</>
-            ) : (
-              <><FiZap /> Generate Report</>
-            )}
-          </button>
+          {role === 'staff' ? (
+            <button
+              className="btn-generate"
+              onClick={handleStaffSubmit}
+              disabled={running}
+              style={{ marginTop: 24 }}
+            >
+              <FiSend /> Submit Handover for Manager Approval
+            </button>
+          ) : (
+            <button
+              id="btn-generate"
+              className="btn-generate"
+              onClick={handleGenerate}
+              disabled={running || backendOk === false}
+              style={{ marginTop: 24 }}
+            >
+              {running ? (
+                <><FiRefreshCw className="spin-icon" /> Generating… {pct}%</>
+              ) : overallDone ? (
+                <><FiCheckCircle /> Generate Again</>
+              ) : (
+                <><FiZap /> Generate Approved .docx Report</>
+              )}
+            </button>
+          )}
         </div>
 
         {/* ── Progress Card ───────────────────────────────────────────────── */}
@@ -341,12 +557,7 @@ export default function App() {
           <div className="card">
             <div className="card-title">
               <FiActivity className="card-title-icon" />
-              Live Liquid Stream Progress
-              {overallDone && (
-                <span style={{ marginLeft: 'auto', fontSize: 11, color: '#ffffff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
-                  <FiCheckCircle /> Complete
-                </span>
-              )}
+              Live Stream Progress
             </div>
 
             <div className="progress-panel">
@@ -366,12 +577,8 @@ export default function App() {
                         <StepIcon /> {step.label}
                         {step.ts && <span className="step-ts"><FiClock /> {step.ts}</span>}
                       </div>
-                      {step.message && (
-                        <div className="step-message">{step.message}</div>
-                      )}
-                      {step.counts && step.status === 'done' && (
-                        <CountPills counts={step.counts} />
-                      )}
+                      {step.message && <div className="step-message">{step.message}</div>}
+                      {step.counts && step.status === 'done' && <CountPills counts={step.counts} />}
                     </div>
                   </div>
                 )
@@ -391,9 +598,7 @@ export default function App() {
         )}
 
         {/* ── Stats Bar ───────────────────────────────────────────────────── */}
-        {result?.summary?.counts && (
-          <StatsBar counts={result.summary.counts} />
-        )}
+        {result?.summary?.counts && <StatsBar counts={result.summary.counts} />}
 
         {/* ── Activity Log ───────────────────────────────────────────────── */}
         {logLines.length > 0 && (
