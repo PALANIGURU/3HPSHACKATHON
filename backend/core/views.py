@@ -161,7 +161,33 @@ def generate_report(request: Request):
         response["Content-Disposition"] = 'attachment; filename="slack_handover_summary.txt"'
         return response
 
-    # Render .docx report
+    # Return PDF format if requested
+    if export_format == "pdf":
+        from .pdf_publisher import render_pdf
+        try:
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False, prefix="shift_report_") as tmp:
+                tmp_path = tmp.name
+
+            render_pdf(
+                sections=sections,
+                output_path=tmp_path,
+                shift_start=shift_start,
+                shift_end=shift_end,
+            )
+            filename = f"shift_report_{shift_start.strftime('%Y%m%d_%H%M')}_{shift_end.strftime('%H%M')}.pdf"
+            response = FileResponse(
+                open(tmp_path, "rb"),
+                content_type="application/pdf",
+            )
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            response["X-Report-Items"] = str(summary["total_items"])
+            response["X-Report-Counts"] = json.dumps(summary["counts"])
+            return response
+        except Exception as exc:
+            logger.error("render_pdf failed: %s", exc)
+            return JsonResponse({"error": f"PDF export failed: {exc}"}, status=500)
+
+    # Render .docx report (default)
     try:
         with tempfile.NamedTemporaryFile(suffix=".docx", delete=False, prefix="shift_report_") as tmp:
             tmp_path = tmp.name

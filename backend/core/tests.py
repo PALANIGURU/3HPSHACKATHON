@@ -239,6 +239,20 @@ class DRFAPIEndpointTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response["X-Report-Items"], "4")
 
+    def test_generate_report_api_pdf_format(self):
+        """Verify POST /api/generate-report/ with format='pdf' returns a valid PDF document attachment."""
+        url = reverse("generate-report")
+        payload = {
+            "scenario": "quiet",
+            "format": "pdf",
+        }
+        response = self.client.post(url, data=payload, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        content_bytes = b"".join(response.streaming_content)
+        self.assertTrue(content_bytes.startswith(b"%PDF"))
+        self.assertTrue(len(content_bytes) > 500)
+
     def test_approval_workflow_staff_submit_and_manager_review(self):
         """Test Staff submission, Manager approval/rejection, and report generation gating."""
         # 1. Staff submits handover request

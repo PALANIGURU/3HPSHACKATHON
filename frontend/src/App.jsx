@@ -53,7 +53,12 @@ function downloadB64(b64, filename) {
   const bytes = atob(b64)
   const arr   = new Uint8Array(bytes.length)
   for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i)
-  const blob  = new Blob([arr], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' })
+  
+  const mimeType = filename.endsWith('.pdf')
+    ? 'application/pdf'
+    : 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+
+  const blob  = new Blob([arr], { type: mimeType })
   const url   = URL.createObjectURL(blob)
   const a     = document.createElement('a')
   a.href = url; a.download = filename; a.click()
@@ -113,6 +118,7 @@ function StatsBar({ counts }) {
 
 export default function App() {
   const [role,       setRole]       = useState('staff')
+  const [format,     setFormat]     = useState('pdf') // 'pdf' | 'docx'
   const [shiftStart, setShiftStart] = useState(DEFAULT_START)
   const [shiftEnd,   setShiftEnd]   = useState(DEFAULT_END)
   const [scenario,   setScenario]   = useState('busy')
@@ -224,6 +230,7 @@ export default function App() {
       shift_start: reqToUse.shift_start || shiftStart,
       shift_end: reqToUse.shift_end || shiftEnd,
       request_id: reqToUse.id,
+      format: format,
     }
     if (reqToUse.scenario) body.scenario = reqToUse.scenario
 
@@ -520,6 +527,28 @@ export default function App() {
                 </div>
               </>
             )}
+
+            <div className="field form-grid-full">
+              <label>Export Format</label>
+              <div className="scenario-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)' }}>
+                <div
+                  className={`scenario-card ${format === 'pdf' ? 'active' : ''}`}
+                  onClick={() => !running && setFormat('pdf')}
+                >
+                  <FiFileText className="scenario-icon" />
+                  <div className="scenario-name">PDF Document</div>
+                  <div className="scenario-desc">Standard Portable Document Format (.pdf)</div>
+                </div>
+                <div
+                  className={`scenario-card ${format === 'docx' ? 'active' : ''}`}
+                  onClick={() => !running && setFormat('docx')}
+                >
+                  <FiPackage className="scenario-icon" />
+                  <div className="scenario-name">Word Document</div>
+                  <div className="scenario-desc">Editable Microsoft Word Format (.docx)</div>
+                </div>
+              </div>
+            </div>
 
             <div className="field form-grid-full">
               <label>Data Scenario / Source</label>

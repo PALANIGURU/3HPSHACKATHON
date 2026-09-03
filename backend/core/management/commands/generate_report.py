@@ -75,7 +75,14 @@ class Command(BaseCommand):
             "--output",
             dest="output",
             default="shift_report.docx",
-            help="Output .docx file path (default: shift_report.docx).",
+            help="Output file path (default: shift_report.docx).",
+        )
+        parser.add_argument(
+            "--format",
+            dest="format",
+            default="docx",
+            choices=["docx", "pdf", "slack"],
+            help="Export format: docx (default), pdf, or slack.",
         )
         parser.add_argument(
             "--scenario",
@@ -155,14 +162,31 @@ class Command(BaseCommand):
             + " | ".join(f"{k}={v}" for k, v in summary["counts"].items())
         )
 
-        # ── Render .docx ──────────────────────────────────────────────────────
+        # ── Render Report ────────────────────────────────────────────────────
+        fmt = options.get("format", "docx").lower()
         try:
-            out = render_docx(
-                sections=sections,
-                output_path=output_path,
-                shift_start=shift_start,
-                shift_end=shift_end,
-            )
+            if fmt == "pdf":
+                from core.pdf_publisher import render_pdf
+                out = render_pdf(
+                    sections=sections,
+                    output_path=output_path if output_path != "shift_report.docx" else "shift_report.pdf",
+                    shift_start=shift_start,
+                    shift_end=shift_end,
+                )
+            elif fmt == "slack":
+                from core.generator import generate_slack_summary
+                slack_txt = generate_slack_summary(sections, shift_start, shift_end)
+                out_path = output_path if output_path != "shift_report.docx" else "slack_summary.txt"
+                with open(out_path, "w", encoding="utf-8") as f:
+                    f.write(slack_txt)
+                out = out_path
+            else:
+                out = render_docx(
+                    sections=sections,
+                    output_path=output_path,
+                    shift_start=shift_start,
+                    shift_end=shift_end,
+                )
         except RuntimeError as exc:
             self.stderr.write(self.style.ERROR(str(exc)))
             sys.exit(1)

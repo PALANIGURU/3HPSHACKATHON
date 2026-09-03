@@ -115,19 +115,29 @@ def _generate_stream(body: dict):
     time.sleep(0.15)
 
     # 5. Render
-    yield emit("render", "running", "Generating .docx report...", 75)
+    doc_type = (body.get("format") or body.get("file_type") or "docx").strip().lower()
+    yield emit("render", "running", f"Generating .{doc_type} report...", 75)
     time.sleep(0.25)
 
     try:
-        with tempfile.NamedTemporaryFile(suffix=".docx", delete=False, prefix="shift_report_") as tmp:
-            tmp_path = tmp.name
-
-        render_docx(sections=sections, output_path=tmp_path, shift_start=shift_start, shift_end=shift_end)
+        if doc_type == "pdf":
+            from .pdf_publisher import render_pdf
+            ext = ".pdf"
+            mime = "application/pdf"
+            with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False, prefix="shift_report_") as tmp:
+                tmp_path = tmp.name
+            render_pdf(sections=sections, output_path=tmp_path, shift_start=shift_start, shift_end=shift_end)
+        else:
+            ext = ".docx"
+            mime = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            with tempfile.NamedTemporaryFile(suffix=".docx", delete=False, prefix="shift_report_") as tmp:
+                tmp_path = tmp.name
+            render_docx(sections=sections, output_path=tmp_path, shift_start=shift_start, shift_end=shift_end)
     except Exception as exc:
         yield emit("render", "error", f"Export failed: {exc}", 75)
         return
 
-    yield emit("render", "done", "Document rendered successfully", 85)
+    yield emit("render", "done", f"Document ({doc_type.upper()}) rendered successfully", 85)
     time.sleep(0.15)
 
     # 6. Finalise
@@ -145,7 +155,7 @@ def _generate_stream(body: dict):
         yield emit("finalise", "error", f"Packaging failed: {exc}", 92)
         return
 
-    filename = f"shift_report_{shift_start.strftime('%Y%m%d_%H%M')}_{shift_end.strftime('%H%M')}.docx"
+    filename = f"shift_report_{shift_start.strftime('%Y%m%d_%H%M')}_{shift_end.strftime('%H%M')}{ext}"
     yield emit(
         "finalise",
         "done",
