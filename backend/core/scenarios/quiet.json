@@ -1,0 +1,21 @@
+{
+  "_description": "Quiet shift: minimal activity, only 1 resolved item and 1 watch item. No blockers, no in-progress.",
+  "shift_start": "2024-01-15T06:00:00Z",
+  "shift_end": "2024-01-15T07:30:00Z",
+  "events": [
+    {
+      "source": "tickets",
+      "record_id": "TKT-Q1",
+      "timestamp": "2024-01-15T06:15:00Z",
+      "summary": "Scheduled maintenance: nightly log rotation completed",
+      "status": "completed"
+    },
+    {
+      "source": "chat",
+      "record_id": "CHAT-Q1",
+      "timestamp": "2024-01-15T06:45:00Z",
+      "summary": "#ops: Disk usage at 78% on backup-01, watching",
+      "status": "watch"
+    }
+  ]
+}

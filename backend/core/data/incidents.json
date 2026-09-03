@@ -1,0 +1,65 @@
+[
+  {
+    "source": "incidents",
+    "record_id": "INC-001",
+    "timestamp": "2024-01-15T07:00:00Z",
+    "summary": "P1: Database primary node unreachable in us-east-1",
+    "status": "open"
+  },
+  {
+    "source": "incidents",
+    "record_id": "INC-001",
+    "timestamp": "2024-01-15T07:20:00Z",
+    "summary": "P1: Database primary node - failover initiated to replica",
+    "status": "in_progress"
+  },
+  {
+    "source": "incidents",
+    "record_id": "INC-001",
+    "timestamp": "2024-01-15T08:10:00Z",
+    "summary": "P1: Database primary node - failover complete, services restored",
+    "status": "resolved"
+  },
+  {
+    "source": "incidents",
+    "record_id": "INC-002",
+    "timestamp": "2024-01-15T09:15:00Z",
+    "summary": "P2: Elevated error rate on checkout service - 4.2% errors vs 0.1% baseline",
+    "status": "investigating"
+  },
+  {
+    "source": "incidents",
+    "record_id": "INC-002",
+    "timestamp": "2024-01-15T10:30:00Z",
+    "summary": "P2: Checkout service errors - traced to bad deploy, rollback in progress",
+    "status": "in_progress"
+  },
+  {
+    "source": "incidents",
+    "record_id": "INC-003",
+    "timestamp": "2024-01-15T11:00:00Z",
+    "summary": "P3: Slack notification bot unresponsive, alerts not being routed",
+    "status": "open"
+  },
+  {
+    "source": "incidents",
+    "record_id": "INC-004",
+    "timestamp": "2024-01-15T06:00:00Z",
+    "summary": "P2: Analytics pipeline stalled - 3 hour backlog building",
+    "status": "blocked"
+  },
+  {
+    "source": "incidents",
+    "record_id": "INC-004",
+    "timestamp": "2024-01-15T07:30:00Z",
+    "summary": "P2: Analytics pipeline - upstream Kafka partition issue",
+    "status": "escalated"
+  },
+  {
+    "source": "incidents",
+    "record_id": "INC-005",
+    "timestamp": "2024-01-15T11:30:00Z",
+    "summary": "P4: Search latency creeping up, p99 at 850ms vs 400ms normal",
+    "status": "monitoring"
+  }
+]

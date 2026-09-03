@@ -1,0 +1,100 @@
+[
+  {
+    "source": "tickets",
+    "record_id": "TKT-001",
+    "timestamp": "2024-01-15T08:05:00Z",
+    "summary": "Login page returning 500 errors for EU users",
+    "status": "open"
+  },
+  {
+    "source": "tickets",
+    "record_id": "TKT-001",
+    "timestamp": "2024-01-15T09:30:00Z",
+    "summary": "Login page returning 500 errors for EU users - investigating DB connection pool",
+    "status": "in_progress"
+  },
+  {
+    "source": "tickets",
+    "record_id": "TKT-001",
+    "timestamp": "2024-01-15T11:15:00Z",
+    "summary": "Login page returning 500 errors for EU users - DB pool exhaustion, fix deployed",
+    "status": "resolved"
+  },
+  {
+    "source": "tickets",
+    "record_id": "TKT-002",
+    "timestamp": "2024-01-15T07:45:00Z",
+    "summary": "Payment gateway timeout - Stripe webhooks not processing",
+    "status": "blocked"
+  },
+  {
+    "source": "tickets",
+    "record_id": "TKT-002",
+    "timestamp": "2024-01-15T08:00:00Z",
+    "summary": "Payment gateway timeout - escalated to platform team",
+    "status": "escalated"
+  },
+  {
+    "source": "tickets",
+    "record_id": "TKT-003",
+    "timestamp": "2024-01-15T09:00:00Z",
+    "summary": "CDN cache invalidation for new homepage release",
+    "status": "in_progress"
+  },
+  {
+    "source": "tickets",
+    "record_id": "TKT-004",
+    "timestamp": "2024-01-15T10:45:00Z",
+    "summary": "Scheduled DB vacuum running, performance degraded",
+    "status": "monitoring"
+  },
+  {
+    "source": "tickets",
+    "record_id": "TKT-005",
+    "timestamp": "2024-01-15T06:30:00Z",
+    "summary": "SSL certificate renewal for api.example.com",
+    "status": "open"
+  },
+  {
+    "source": "tickets",
+    "record_id": "TKT-005",
+    "timestamp": "2024-01-15T06:45:00Z",
+    "summary": "SSL certificate renewal for api.example.com - renewing",
+    "status": "in_progress"
+  },
+  {
+    "source": "tickets",
+    "record_id": "TKT-005",
+    "timestamp": "2024-01-15T07:00:00Z",
+    "summary": "SSL certificate renewal for api.example.com - DONE",
+    "status": "completed"
+  },
+  {
+    "source": "tickets",
+    "record_id": "TKT-006",
+    "timestamp": "2024-01-15T11:50:00Z",
+    "summary": "Memory usage alert: search service at 85% threshold",
+    "status": "watch"
+  },
+  {
+    "source": "tickets",
+    "record_id": "TKT-007",
+    "timestamp": "2024-01-15T08:30:00Z",
+    "summary": "API rate limit breach from third-party integration",
+    "status": "critical"
+  },
+  {
+    "source": "tickets",
+    "record_id": "TKT-008",
+    "timestamp": "2024-01-15T10:00:00Z",
+    "summary": "Data export job failed for enterprise client",
+    "status": "open"
+  },
+  {
+    "source": "tickets",
+    "record_id": "MALFORMED",
+    "timestamp": "not-a-real-timestamp",
+    "summary": "This event has a malformed timestamp and should be skipped",
+    "status": "open"
+  }
+]

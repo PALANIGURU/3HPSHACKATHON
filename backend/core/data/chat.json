@@ -1,0 +1,51 @@
+[
+  {
+    "source": "chat",
+    "record_id": "CHAT-001",
+    "timestamp": "2024-01-15T07:55:00Z",
+    "summary": "#ops-alerts: @oncall redis memory at 72%, watching closely",
+    "status": "watch"
+  },
+  {
+    "source": "chat",
+    "record_id": "CHAT-002",
+    "timestamp": "2024-01-15T08:45:00Z",
+    "summary": "#deployments: v2.14.3 rollout to prod-eu complete, smoke tests passing",
+    "status": "completed"
+  },
+  {
+    "source": "chat",
+    "record_id": "CHAT-003",
+    "timestamp": "2024-01-15T09:45:00Z",
+    "summary": "#incidents: Customer reports of slow image loading in Asia-Pacific",
+    "status": "open"
+  },
+  {
+    "source": "chat",
+    "record_id": "CHAT-003",
+    "timestamp": "2024-01-15T10:15:00Z",
+    "summary": "#incidents: Asia-Pacific image slowness - CDN node in SGP degraded, rerouting",
+    "status": "in_progress"
+  },
+  {
+    "source": "chat",
+    "record_id": "CHAT-004",
+    "timestamp": "2024-01-15T11:00:00Z",
+    "summary": "#security: Unusual login spike from VPN IPs, reviewing",
+    "status": "watch"
+  },
+  {
+    "source": "chat",
+    "record_id": "CHAT-005",
+    "timestamp": "2024-01-15T10:00:00Z",
+    "summary": "#ops: Batch job for daily reports kicked off manually - delayed 45min",
+    "status": "in_progress"
+  },
+  {
+    "source": "chat",
+    "record_id": "CHAT-005",
+    "timestamp": "2024-01-15T10:50:00Z",
+    "summary": "#ops: Batch job for daily reports completed successfully",
+    "status": "completed"
+  }
+]

@@ -1,0 +1,105 @@
+{
+  "_description": "Messy shift: duplicate/overlapping updates, out-of-order timestamps, ticket that opens AND closes inside the window (latest state = completed), malformed event that must be skipped.",
+  "shift_start": "2024-01-15T08:00:00Z",
+  "shift_end": "2024-01-15T14:00:00Z",
+  "events": [
+    {
+      "source": "tickets",
+      "record_id": "TKT-M1",
+      "timestamp": "2024-01-15T10:00:00Z",
+      "summary": "TKT-M1: Cache eviction storm causing high DB load - update 2",
+      "status": "in_progress"
+    },
+    {
+      "source": "tickets",
+      "record_id": "TKT-M1",
+      "timestamp": "2024-01-15T08:05:00Z",
+      "summary": "TKT-M1: Cache eviction storm causing high DB load - initial report",
+      "status": "open"
+    },
+    {
+      "source": "tickets",
+      "record_id": "TKT-M1",
+      "timestamp": "2024-01-15T08:05:00Z",
+      "summary": "TKT-M1: Cache eviction storm - EXACT DUPLICATE of initial report",
+      "status": "open"
+    },
+    {
+      "source": "tickets",
+      "record_id": "TKT-M2",
+      "timestamp": "2024-01-15T08:30:00Z",
+      "summary": "TKT-M2: Opened AND closed inside window - deploy script hung",
+      "status": "open"
+    },
+    {
+      "source": "tickets",
+      "record_id": "TKT-M2",
+      "timestamp": "2024-01-15T08:35:00Z",
+      "summary": "TKT-M2: Deploy script hung - investigating",
+      "status": "in_progress"
+    },
+    {
+      "source": "tickets",
+      "record_id": "TKT-M2",
+      "timestamp": "2024-01-15T08:50:00Z",
+      "summary": "TKT-M2: Deploy script hung - restarted, completed successfully",
+      "status": "completed"
+    },
+    {
+      "source": "incidents",
+      "record_id": "INC-M1",
+      "timestamp": "2024-01-15T09:00:00Z",
+      "summary": "INC-M1: P2 - API gateway returning 503s in eu-west-2",
+      "status": "open"
+    },
+    {
+      "source": "incidents",
+      "record_id": "INC-M1",
+      "timestamp": "2024-01-15T09:45:00Z",
+      "summary": "INC-M1: P2 - API gateway 503s - bad health check config pushed",
+      "status": "blocked"
+    },
+    {
+      "source": "incidents",
+      "record_id": "INC-M1",
+      "timestamp": "2024-01-15T11:00:00Z",
+      "summary": "INC-M1: P2 - API gateway - fix applied, monitoring recovery",
+      "status": "monitoring"
+    },
+    {
+      "source": "tickets",
+      "record_id": "TKT-M3",
+      "timestamp": "2024-01-15T12:00:00Z",
+      "summary": "TKT-M3: Background worker queue depth rising, approaching alert threshold",
+      "status": "watch"
+    },
+    {
+      "source": "tickets",
+      "record_id": "TKT-M3",
+      "timestamp": "2024-01-15T11:00:00Z",
+      "summary": "TKT-M3: Background worker queue - OUT OF ORDER update, should be before 12:00",
+      "status": "open"
+    },
+    {
+      "source": "chat",
+      "record_id": "CHAT-M1",
+      "timestamp": "not-a-valid-timestamp",
+      "summary": "This event has a malformed timestamp and MUST be skipped with a logged warning",
+      "status": "open"
+    },
+    {
+      "source": "tickets",
+      "record_id": "TKT-M4",
+      "timestamp": "2024-01-15T13:30:00Z",
+      "summary": "TKT-M4: SSL cert expiry warning for internal monitoring dashboard",
+      "status": "open"
+    },
+    {
+      "source": "chat",
+      "record_id": "CHAT-M2",
+      "timestamp": "2024-01-15T13:45:00Z",
+      "summary": "#ops: Memory usage alert cleared on search nodes",
+      "status": "resolved"
+    }
+  ]
+}

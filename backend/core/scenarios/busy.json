@@ -1,0 +1,112 @@
+{
+  "_description": "Busy shift: all 4 sections populated with multiple items each. High activity across all sources.",
+  "shift_start": "2024-01-15T07:00:00Z",
+  "shift_end": "2024-01-15T12:00:00Z",
+  "events": [
+    {
+      "source": "tickets",
+      "record_id": "TKT-B1",
+      "timestamp": "2024-01-15T07:10:00Z",
+      "summary": "Login page 500 errors - EU region affected",
+      "status": "open"
+    },
+    {
+      "source": "tickets",
+      "record_id": "TKT-B1",
+      "timestamp": "2024-01-15T08:00:00Z",
+      "summary": "Login page 500 errors - root cause identified: connection pool exhaustion",
+      "status": "in_progress"
+    },
+    {
+      "source": "tickets",
+      "record_id": "TKT-B1",
+      "timestamp": "2024-01-15T09:00:00Z",
+      "summary": "Login page 500 errors - fix deployed, all EU users restored",
+      "status": "resolved"
+    },
+    {
+      "source": "incidents",
+      "record_id": "INC-B1",
+      "timestamp": "2024-01-15T07:00:00Z",
+      "summary": "P1: DB primary node unreachable in us-east-1",
+      "status": "open"
+    },
+    {
+      "source": "incidents",
+      "record_id": "INC-B1",
+      "timestamp": "2024-01-15T07:20:00Z",
+      "summary": "P1: DB primary - failover to replica initiated",
+      "status": "in_progress"
+    },
+    {
+      "source": "incidents",
+      "record_id": "INC-B1",
+      "timestamp": "2024-01-15T08:10:00Z",
+      "summary": "P1: DB primary - failover complete, all services nominal",
+      "status": "resolved"
+    },
+    {
+      "source": "chat",
+      "record_id": "CHAT-B1",
+      "timestamp": "2024-01-15T08:45:00Z",
+      "summary": "#deployments: v2.14.3 to prod-eu complete, smoke tests passing",
+      "status": "completed"
+    },
+    {
+      "source": "incidents",
+      "record_id": "INC-B2",
+      "timestamp": "2024-01-15T09:15:00Z",
+      "summary": "P2: Elevated error rate on checkout - 4.2% vs 0.1% baseline",
+      "status": "investigating"
+    },
+    {
+      "source": "incidents",
+      "record_id": "INC-B2",
+      "timestamp": "2024-01-15T10:30:00Z",
+      "summary": "P2: Checkout errors - bad deploy identified, rollback running",
+      "status": "in_progress"
+    },
+    {
+      "source": "tickets",
+      "record_id": "TKT-B2",
+      "timestamp": "2024-01-15T08:30:00Z",
+      "summary": "API rate limit breach from third-party CRM integration",
+      "status": "critical"
+    },
+    {
+      "source": "tickets",
+      "record_id": "TKT-B3",
+      "timestamp": "2024-01-15T07:45:00Z",
+      "summary": "Payment gateway timeout - Stripe webhooks not processing",
+      "status": "blocked"
+    },
+    {
+      "source": "chat",
+      "record_id": "CHAT-B2",
+      "timestamp": "2024-01-15T07:55:00Z",
+      "summary": "#ops-alerts: Redis memory at 72%, monitoring closely",
+      "status": "watch"
+    },
+    {
+      "source": "tickets",
+      "record_id": "TKT-B4",
+      "timestamp": "2024-01-15T10:45:00Z",
+      "summary": "Scheduled DB vacuum running, query performance degraded temporarily",
+      "status": "monitoring"
+    },
+    {
+      "source": "incidents",
+      "record_id": "INC-B3",
+      "timestamp": "2024-01-15T11:00:00Z",
+      "summary": "P3: Slack notification bot unresponsive, alerts not being routed",
+      "status": "open"
+    },
+    {
+      "source": "chat",
+      "record_id": "CHAT-B3",
+      "timestamp": "2024-01-15T11:00:00Z",
+      "summary": "#security: Unusual login spike from VPN IPs, reviewing access logs",
+      "status": "watch"
+    }
+  ]
+}

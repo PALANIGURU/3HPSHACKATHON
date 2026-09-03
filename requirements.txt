@@ -1,0 +1,5 @@
+Django>=6.0
+djangorestframework>=3.17
+django-cors-headers>=4.9
+python-docx>=1.2
+python-decouple>=3.8
