@@ -1,20 +1,42 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
+import {
+  FiZap,
+  FiRadio,
+  FiShuffle,
+  FiClipboard,
+  FiFileText,
+  FiPackage,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiClock,
+  FiDownload,
+  FiSliders,
+  FiActivity,
+  FiTerminal,
+  FiMoon,
+  FiTrendingUp,
+  FiCompass,
+  FiCheckSquare,
+  FiRefreshCw,
+  FiEye,
+  FiLayers
+} from 'react-icons/fi'
 
-/* ─── Constants ────────────────────────────────────────────────────────── */
+/* ─── Step Icons Configuration ────────────────────────────────────────── */
 const STEPS_CONFIG = [
-  { id: 'validate', label: 'Validating parameters',     icon: '⚡' },
-  { id: 'fetch',    label: 'Fetching activity data',    icon: '📡' },
-  { id: 'dedup',    label: 'Deduplicating events',      icon: '🔀' },
-  { id: 'section',  label: 'Applying sectioning rules', icon: '📋' },
-  { id: 'render',   label: 'Rendering .docx report',   icon: '📄' },
-  { id: 'finalise', label: 'Finalising and packaging',  icon: '📦' },
+  { id: 'validate', label: 'Validating parameters',     icon: FiZap },
+  { id: 'fetch',    label: 'Fetching activity data',    icon: FiRadio },
+  { id: 'dedup',    label: 'Deduplicating events',      icon: FiShuffle },
+  { id: 'section',  label: 'Applying sectioning rules', icon: FiClipboard },
+  { id: 'render',   label: 'Rendering .docx report',   icon: FiFileText },
+  { id: 'finalise', label: 'Finalising and packaging',  icon: FiPackage },
 ]
 
 const SCENARIOS = [
-  { id: '',       icon: '⚙️',  name: 'Live Data', desc: 'Read from JSON sources' },
-  { id: 'quiet',  icon: '🌙',  name: 'Quiet',     desc: 'Minimal activity' },
-  { id: 'busy',   icon: '🔥',  name: 'Busy',      desc: 'All 4 sections' },
-  { id: 'messy',  icon: '🌪️',  name: 'Messy',     desc: 'Duplicates + chaos' },
+  { id: '',       icon: FiSliders,     name: 'Live Data', desc: 'Read from sources.json' },
+  { id: 'quiet',  icon: FiMoon,        name: 'Quiet',     desc: 'Minimal activity' },
+  { id: 'busy',   icon: FiTrendingUp,  name: 'Busy',      desc: 'All 4 sections' },
+  { id: 'messy',  icon: FiCompass,     name: 'Messy',     desc: 'Duplicates + chaos' },
 ]
 
 const DEFAULT_START = '2024-01-15T07:00:00Z'
@@ -33,28 +55,26 @@ function downloadB64(b64, filename) {
 }
 
 /* ─── Sub-components ───────────────────────────────────────────────────── */
-function StepIcon({ status }) {
-  const icons = { idle: '○', running: '◎', done: '✓', error: '✗' }
-  return (
-    <div className={`step-icon ${status}`}>
-      {icons[status] || '○'}
-    </div>
-  )
+function StepStatusIcon({ status }) {
+  if (status === 'running') return <FiRefreshCw className="spin-icon" />
+  if (status === 'done')    return <FiCheckCircle />
+  if (status === 'error')   return <FiAlertCircle />
+  return <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--text-muted)' }} />
 }
 
 function CountPills({ counts }) {
   const labels = {
-    completed:   { label: '✅ Completed',   cls: 'completed' },
-    in_progress: { label: '🔄 In Progress', cls: 'in_progress' },
-    blockers:    { label: '🚨 Blockers',    cls: 'blockers' },
-    watch_list:  { label: '👁 Watch-list',  cls: 'watch_list' },
-    still_open:  { label: '⏳ Carried Over', cls: 'still_open' },
+    completed:   { label: 'Completed',   icon: FiCheckSquare },
+    in_progress: { label: 'In Progress', icon: FiRefreshCw },
+    blockers:    { label: 'Blockers',    icon: FiAlertCircle },
+    watch_list:  { label: 'Watch-list',  icon: FiEye },
+    still_open:  { label: 'Carried Over', icon: FiLayers },
   }
   return (
     <div className="counts-row">
-      {Object.entries(labels).map(([k, { label, cls }]) => counts[k] > 0 && (
-        <span key={k} className={`count-pill ${cls}`}>
-          {label}: {counts[k]}
+      {Object.entries(labels).map(([k, { label, icon: Icon }]) => counts[k] > 0 && (
+        <span key={k} className="count-pill">
+          <Icon style={{ fontSize: 12 }} /> {label}: {counts[k]}
         </span>
       ))}
     </div>
@@ -63,23 +83,23 @@ function CountPills({ counts }) {
 
 function StatsBar({ counts }) {
   const cells = [
-    { k: 'completed',   label: 'Completed',   icon: '✅' },
-    { k: 'in_progress', label: 'In Progress',  icon: '🔄' },
-    { k: 'blockers',    label: 'Blockers',     icon: '🚨' },
-    { k: 'watch_list',  label: 'Watch-list',   icon: '👁️' },
-    { k: 'still_open',  label: 'Carried Over', icon: '⏳' },
+    { k: 'completed',   label: 'Completed',   icon: FiCheckSquare },
+    { k: 'in_progress', label: 'In Progress',  icon: FiRefreshCw },
+    { k: 'blockers',    label: 'Blockers',     icon: FiAlertCircle },
+    { k: 'watch_list',  label: 'Watch-list',   icon: FiEye },
+    { k: 'still_open',  label: 'Carried Over', icon: FiLayers },
   ]
   const total = Object.entries(counts).reduce((a, [k, v]) => k !== 'still_open' ? a + v : a, 0)
   return (
     <div className="stats-bar">
-      <div className="stat-cell c-total">
+      <div className="stat-cell">
         <div className="stat-value">{total}</div>
-        <div className="stat-label">Total Items</div>
+        <div className="stat-label"><FiActivity /> Total Items</div>
       </div>
-      {cells.map(({ k, label, icon }) => (
-        <div key={k} className={`stat-cell c-${k}`}>
+      {cells.map(({ k, label, icon: Icon }) => (
+        <div key={k} className="stat-cell">
           <div className="stat-value">{counts[k] ?? 0}</div>
-          <div className="stat-label">{icon} {label}</div>
+          <div className="stat-label"><Icon /> {label}</div>
         </div>
       ))}
     </div>
@@ -92,14 +112,13 @@ export default function App() {
   const [shiftEnd,   setShiftEnd]   = useState(DEFAULT_END)
   const [scenario,   setScenario]   = useState('busy')
   const [running,    setRunning]    = useState(false)
-  const [stepStates, setStepStates] = useState({})   // { stepId: {status, message, ts} }
+  const [stepStates, setStepStates] = useState({})
   const [pct,        setPct]        = useState(0)
   const [logLines,   setLogLines]   = useState([])
-  const [result,     setResult]     = useState(null)  // { file_b64, filename, summary }
-  const [backendOk,  setBackendOk]  = useState(null)  // true|false|null=checking
+  const [result,     setResult]     = useState(null)
+  const [backendOk,  setBackendOk]  = useState(null)
 
-  const logRef      = useRef(null)
-  const xhrRef      = useRef(null)
+  const logRef = useRef(null)
 
   /* Health check */
   useEffect(() => {
@@ -130,7 +149,7 @@ export default function App() {
     if (running) return
     reset()
     setRunning(true)
-    addLog('Starting report generation...', 'info')
+    addLog('Starting report generation stream...', 'info')
 
     const body = { shift_start: shiftStart, shift_end: shiftEnd }
     if (scenario) body.scenario = scenario
@@ -159,7 +178,7 @@ export default function App() {
 
         buffer += decoder.decode(value, { stream: true })
         const lines = buffer.split('\n')
-        buffer = lines.pop() // keep incomplete line
+        buffer = lines.pop()
 
         for (const line of lines) {
           if (!line.startsWith('data: ')) continue
@@ -167,7 +186,6 @@ export default function App() {
             const evt = JSON.parse(line.slice(6))
             const { step, status, message, pct: p, ts, counts, file_b64, filename, summary } = evt
 
-            // Update step state
             setStepStates(prev => ({
               ...prev,
               [step]: { status, message, ts: ts || '' },
@@ -175,10 +193,6 @@ export default function App() {
             if (p !== undefined) setPct(p)
 
             addLog(`[${step}] ${message}`, status === 'error' ? 'error' : status === 'done' ? 'success' : 'info')
-
-            if (counts) {
-              /* Counts arrive on the 'section' step done event */
-            }
 
             if (file_b64 && filename) {
               setResult({ file_b64, filename, summary })
@@ -202,9 +216,7 @@ export default function App() {
     }
   }, [running, shiftStart, shiftEnd, scenario, reset, addLog])
 
-  /* Derive final counts from stepStates */
   const finalCounts = (() => {
-    const sectionStep = stepStates['section']
     if (result?.summary?.counts) return result.summary.counts
     return { completed: 0, in_progress: 0, blockers: 0, watch_list: 0 }
   })()
@@ -213,7 +225,6 @@ export default function App() {
   const hasError    = Object.values(stepStates).some(s => s.status === 'error')
   const overallDone = pct === 100 && !hasError
 
-  /* Step statuses to display */
   const stepsDisplay = STEPS_CONFIG.map(sc => {
     const s = stepStates[sc.id]
     return {
@@ -232,14 +243,13 @@ export default function App() {
         <div className="header-logo">3H</div>
         <div>
           <div className="header-title">Shift Handover Generator</div>
-          <div className="header-sub">3HPS Hackathon · Real-time .docx export</div>
+          <div className="header-sub">Liquid Glass Monochrome Edition</div>
         </div>
         <div className="header-badge">
           <span
             className={`status-dot ${
               backendOk === null ? 'checking' : backendOk ? 'online' : 'offline'
             }`}
-            style={{ display: 'inline-block', marginRight: 5 }}
           />
           {backendOk === null ? 'Connecting...' : backendOk ? 'Backend Online' : 'Backend Offline'}
         </div>
@@ -248,19 +258,20 @@ export default function App() {
       <main className="main">
         {/* ── Hero ───────────────────────────────────────────────────────── */}
         <section className="hero">
-          <div className="hero-tag">Live Progress Tracking</div>
-          <h1>Generate Shift Handover Report</h1>
+          <div className="hero-tag">
+            <FiActivity /> Real-Time Engine
+          </div>
+          <h1>Shift Handover Report</h1>
           <p>
-            Select your shift window, pick a scenario, and watch the report
-            build step-by-step in real time — then download the polished .docx.
+            Generate reproducible .docx shift handover reports with real-time liquid progress updates and strict boundary window enforcement.
           </p>
         </section>
 
         {/* ── Config card ─────────────────────────────────────────────────── */}
         <div className="card">
           <div className="card-title">
-            <span className="card-title-icon">⚙️</span>
-            Configuration
+            <FiSliders className="card-title-icon" />
+            Configuration & Shift Window
           </div>
 
           <div className="form-grid">
@@ -287,20 +298,23 @@ export default function App() {
               />
             </div>
             <div className="field form-grid-full">
-              <label>Data Source / Scenario</label>
+              <label>Data Scenario / Source</label>
               <div className="scenario-grid">
-                {SCENARIOS.map(sc => (
-                  <div
-                    key={sc.id}
-                    id={`scenario-${sc.id || 'live'}`}
-                    className={`scenario-card ${scenario === sc.id ? 'active' : ''}`}
-                    onClick={() => !running && setScenario(sc.id)}
-                  >
-                    <div className="scenario-icon">{sc.icon}</div>
-                    <div className="scenario-name">{sc.name}</div>
-                    <div className="scenario-desc">{sc.desc}</div>
-                  </div>
-                ))}
+                {SCENARIOS.map(sc => {
+                  const Icon = sc.icon
+                  return (
+                    <div
+                      key={sc.id}
+                      id={`scenario-${sc.id || 'live'}`}
+                      className={`scenario-card ${scenario === sc.id ? 'active' : ''}`}
+                      onClick={() => !running && setScenario(sc.id)}
+                    >
+                      <Icon className="scenario-icon" />
+                      <div className="scenario-name">{sc.name}</div>
+                      <div className="scenario-desc">{sc.desc}</div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -310,80 +324,83 @@ export default function App() {
             className="btn-generate"
             onClick={handleGenerate}
             disabled={running || backendOk === false}
-            style={{ marginTop: 20 }}
+            style={{ marginTop: 24 }}
           >
-            {running
-              ? <>⟳ Generating… {pct}%</>
-              : overallDone
-              ? <>✓ Generate Again</>
-              : <>⚡ Generate Report</>
-            }
+            {running ? (
+              <><FiRefreshCw className="spin-icon" /> Generating… {pct}%</>
+            ) : overallDone ? (
+              <><FiCheckCircle /> Generate Again</>
+            ) : (
+              <><FiZap /> Generate Report</>
+            )}
           </button>
         </div>
 
-        {/* ── Progress card (only when something has happened) ────────────── */}
+        {/* ── Progress Card ───────────────────────────────────────────────── */}
         {Object.keys(stepStates).length > 0 && (
           <div className="card">
             <div className="card-title">
-              <span className="card-title-icon">📊</span>
-              Live Progress
+              <FiActivity className="card-title-icon" />
+              Live Liquid Stream Progress
               {overallDone && (
-                <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--success)', fontWeight: 600, textTransform: 'none', letterSpacing: 0 }}>
-                  ✓ Complete
+                <span style={{ marginLeft: 'auto', fontSize: 11, color: '#ffffff', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <FiCheckCircle /> Complete
                 </span>
               )}
             </div>
 
             <div className="progress-panel">
-              {/* Global bar */}
               <div className="progress-bar-wrap">
                 <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
               </div>
 
-              {/* Steps */}
-              {stepsDisplay.map(step => (
-                <div key={step.id} className={`step-row ${step.status}`}>
-                  <StepIcon status={step.status} />
-                  <div className="step-body">
-                    <div className="step-label">
-                      {step.icon} {step.label}
-                      {step.ts && <span className="step-ts">{step.ts}</span>}
+              {stepsDisplay.map(step => {
+                const StepIcon = step.icon
+                return (
+                  <div key={step.id} className={`step-row ${step.status}`}>
+                    <div className={`step-icon ${step.status}`}>
+                      <StepStatusIcon status={step.status} />
                     </div>
-                    {step.message && (
-                      <div className="step-message">{step.message}</div>
-                    )}
-                    {step.counts && step.status === 'done' && (
-                      <CountPills counts={step.counts} />
-                    )}
+                    <div className="step-body">
+                      <div className="step-label">
+                        <StepIcon /> {step.label}
+                        {step.ts && <span className="step-ts"><FiClock /> {step.ts}</span>}
+                      </div>
+                      {step.message && (
+                        <div className="step-message">{step.message}</div>
+                      )}
+                      {step.counts && step.status === 'done' && (
+                        <CountPills counts={step.counts} />
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
 
-            {/* Download button */}
             {hasResult && (
               <button
                 id="btn-download"
                 className="btn-download"
                 onClick={() => downloadB64(result.file_b64, result.filename)}
               >
-                ⬇ Download {result.filename}
+                <FiDownload /> Download {result.filename}
               </button>
             )}
           </div>
         )}
 
-        {/* ── Stats bar (shown when complete) ─────────────────────────────── */}
+        {/* ── Stats Bar ───────────────────────────────────────────────────── */}
         {result?.summary?.counts && (
           <StatsBar counts={result.summary.counts} />
         )}
 
-        {/* ── Activity log ─────────────────────────────────────────────────── */}
+        {/* ── Activity Log ───────────────────────────────────────────────── */}
         {logLines.length > 0 && (
           <div className="card">
             <div className="card-title">
-              <span className="card-title-icon">🖥️</span>
-              Activity Log
+              <FiTerminal className="card-title-icon" />
+              Real-Time Activity Log
             </div>
             <div className="activity-log" ref={logRef}>
               {logLines.map((l, i) => (
