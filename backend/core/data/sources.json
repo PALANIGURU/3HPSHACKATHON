@@ -1,0 +1,31 @@
+{
+  "_description": "Config-driven data source registry. Add entries here to point at new sources — zero code changes required. Supported types: 'file' (local JSON) or 'http' (remote JSON endpoint with timeout).",
+  "sources": [
+    {
+      "id": "tickets",
+      "type": "file",
+      "path": "core/data/tickets.json",
+      "enabled": true
+    },
+    {
+      "id": "incidents",
+      "type": "file",
+      "path": "core/data/incidents.json",
+      "enabled": true
+    },
+    {
+      "id": "chat",
+      "type": "file",
+      "path": "core/data/chat.json",
+      "enabled": true
+    },
+    {
+      "id": "external_api",
+      "type": "http",
+      "url": "http://localhost:9999/events",
+      "timeout_seconds": 5,
+      "enabled": false,
+      "_note": "Example remote source — set enabled=true and point url at your own API. It must return a JSON array matching the event contract."
+    }
+  ]
+}

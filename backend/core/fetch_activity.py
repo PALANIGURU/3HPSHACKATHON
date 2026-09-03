@@ -1,48 +1,35 @@
 """
-fetch_activity.py — Step 6: Read JSON data sources, normalize timestamps,
-filter to shift window [shift_start, shift_end).
-
-Rules:
-- Normalize ALL timestamps to UTC (timezone-aware datetime objects).
-- Filter strictly to [shift_start, shift_end) — start inclusive, end exclusive.
-- Skip unreadable/malformed files or events with logged warnings (never crash).
-- Return a flat list of normalized event dicts.
+fetch_activity.py — Step 6: Read JSON & HTTP data sources, normalize timestamps,
+filter to shift window [shift_start, shift_end), and integrate carry-forward snapshots.
 """
 
 import json
 import logging
-import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Optional, List, Dict, Any
+
+from .http_source import fetch_http_source
 
 logger = logging.getLogger(__name__)
 
-# All supported data source filenames
-DATA_SOURCES = ["tickets.json", "incidents.json", "chat.json"]
-
 
 def _parse_utc(timestamp_str: str) -> Optional[datetime]:
-    """
-    Parse an ISO8601 timestamp string and return a UTC-aware datetime.
-    Returns None if parsing fails (caller logs and skips the event).
-    """
     if not isinstance(timestamp_str, str):
         return None
     ts = timestamp_str.strip()
-    # Try multiple ISO8601 formats
     formats = [
         "%Y-%m-%dT%H:%M:%SZ",
         "%Y-%m-%dT%H:%M:%S.%fZ",
         "%Y-%m-%dT%H:%M:%S+00:00",
         "%Y-%m-%dT%H:%M:%S%z",
         "%Y-%m-%dT%H:%M:%S.%f%z",
+        "%Y-%m-%dT%H:%M:%S",
     ]
     for fmt in formats:
         try:
             dt = datetime.strptime(ts, fmt)
             if dt.tzinfo is None:
-                # Assume UTC for naive timestamps
                 dt = dt.replace(tzinfo=timezone.utc)
             else:
                 dt = dt.astimezone(timezone.utc)
@@ -53,10 +40,6 @@ def _parse_utc(timestamp_str: str) -> Optional[datetime]:
 
 
 def _validate_event(event: dict, source_file: str) -> bool:
-    """
-    Validate required fields of an event dict.
-    Logs a warning and returns False for invalid events.
-    """
     required = ["source", "record_id", "timestamp", "summary", "status"]
     for field in required:
         if field not in event:
@@ -75,23 +58,8 @@ def fetch_activity(
     shift_end: datetime,
     data_dir: Optional[str] = None,
     events: Optional[list] = None,
+    include_snapshot: bool = True,
 ) -> list[dict]:
-    """
-    Fetch and normalize activity events for a shift window.
-
-    Args:
-        shift_start: UTC-aware datetime for shift start (inclusive).
-        shift_end:   UTC-aware datetime for shift end (exclusive).
-        data_dir:    Path to directory containing JSON source files.
-                     If None, defaults to core/data/ relative to this file.
-        events:      If provided, use this list directly (for scenario mode)
-                     instead of reading from data_dir.
-
-    Returns:
-        List of normalized event dicts with a '_parsed_timestamp' key (datetime).
-        Events are NOT yet deduplicated or sorted — that's generator.py's job.
-    """
-    # Ensure shift_start and shift_end are UTC-aware
     if shift_start.tzinfo is None:
         shift_start = shift_start.replace(tzinfo=timezone.utc)
     if shift_end.tzinfo is None:
@@ -100,49 +68,81 @@ def fetch_activity(
     all_events = []
 
     if events is not None:
-        # Scenario mode: events supplied directly
-        raw_events = events
-        source_label = "<scenario>"
         all_events.extend(
-            _process_event_list(raw_events, source_label, shift_start, shift_end)
+            _process_event_list(events, "<scenario>", shift_start, shift_end)
         )
     else:
-        # File mode: read from data_dir
         if data_dir is None:
             data_dir = Path(__file__).parent / "data"
         data_dir = Path(data_dir)
 
-        for source_file in DATA_SOURCES:
-            file_path = data_dir / source_file
-            if not file_path.exists():
-                logger.warning("Data source file not found, skipping: %s", file_path)
-                continue
-
+        # Load sources config
+        sources_cfg = data_dir / "sources.json"
+        sources_list = []
+        if sources_cfg.exists():
             try:
-                with open(file_path, "r", encoding="utf-8") as f:
-                    raw = json.load(f)
-            except json.JSONDecodeError as exc:
-                logger.warning(
-                    "Failed to parse JSON from %s: %s — skipping file.", file_path, exc
-                )
-                continue
-            except OSError as exc:
-                logger.warning(
-                    "Cannot read file %s: %s — skipping file.", file_path, exc
-                )
-                continue
+                with open(sources_cfg, "r", encoding="utf-8") as f:
+                    sources_list = json.load(f).get("sources", [])
+            except Exception as exc:
+                logger.warning("Failed to load sources.json: %s. Falling back to default files.", exc)
 
-            if not isinstance(raw, list):
-                logger.warning(
-                    "Expected a JSON array in %s, got %s — skipping.",
-                    file_path,
-                    type(raw).__name__,
-                )
-                continue
+        if not sources_list:
+            sources_list = [
+                {"id": "tickets", "type": "file", "path": str(data_dir / "tickets.json"), "enabled": True},
+                {"id": "incidents", "type": "file", "path": str(data_dir / "incidents.json"), "enabled": True},
+                {"id": "chat", "type": "file", "path": str(data_dir / "chat.json"), "enabled": True},
+            ]
 
-            all_events.extend(
-                _process_event_list(raw, str(file_path), shift_start, shift_end)
-            )
+        for src in sources_list:
+            if not src.get("enabled", True):
+                continue
+            
+            src_type = src.get("type", "file")
+            if src_type == "file":
+                fpath = Path(src.get("path", ""))
+                if not fpath.is_absolute():
+                    fpath = data_dir.parent / fpath if (data_dir.parent / fpath).exists() else data_dir / fpath.name
+                
+                if not fpath.exists():
+                    logger.warning("Data source file not found: %s", fpath)
+                    continue
+
+                try:
+                    with open(fpath, "r", encoding="utf-8") as f:
+                        raw = json.load(f)
+                    if isinstance(raw, list):
+                        all_events.extend(_process_event_list(raw, str(fpath), shift_start, shift_end))
+                except Exception as exc:
+                    logger.warning("Failed reading file %s: %s — skipping.", fpath, exc)
+
+            elif src_type == "http":
+                url = src.get("url", "")
+                timeout = src.get("timeout_seconds", 5)
+                raw = fetch_http_source(url, timeout=timeout)
+                if raw:
+                    all_events.extend(_process_event_list(raw, url, shift_start, shift_end))
+
+    # Incorporate previous shift carry-forward snapshot (stretch feature)
+    if include_snapshot and events is None:
+        if data_dir is None:
+            data_dir = Path(__file__).parent / "data"
+        snapshot_path = Path(data_dir) / "previous_shift_snapshot.json"
+        if snapshot_path.exists():
+            try:
+                with open(snapshot_path, "r", encoding="utf-8") as f:
+                    snap_raw = json.load(f)
+                if isinstance(snap_raw, list):
+                    # Process snapshot items without restricting to shift_start (they originate prior to shift)
+                    for item in snap_raw:
+                        if isinstance(item, dict) and _validate_event(item, str(snapshot_path)):
+                            parsed_ts = _parse_utc(item["timestamp"])
+                            if parsed_ts and parsed_ts < shift_end:
+                                norm = dict(item)
+                                norm["_parsed_timestamp"] = parsed_ts
+                                norm["_still_open"] = True
+                                all_events.append(norm)
+            except Exception as exc:
+                logger.warning("Failed reading previous shift snapshot: %s", exc)
 
     return all_events
 
@@ -153,16 +153,10 @@ def _process_event_list(
     shift_start: datetime,
     shift_end: datetime,
 ) -> list[dict]:
-    """
-    Validate, parse timestamps, and filter events to the shift window.
-    Skips malformed events with logged warnings.
-    """
     result = []
     for event in raw_events:
         if not isinstance(event, dict):
-            logger.warning(
-                "Skipping non-dict entry in %s: %r", source_label, event
-            )
+            logger.warning("Skipping non-dict entry in %s: %r", source_label, event)
             continue
 
         if not _validate_event(event, source_label):
@@ -171,15 +165,15 @@ def _process_event_list(
         parsed_ts = _parse_utc(event["timestamp"])
         if parsed_ts is None:
             logger.warning(
-                "Skipping event with malformed timestamp in %s: record_id=%s, "
-                "timestamp=%r",
+                "Skipping event with malformed timestamp in %s: record_id=%s, timestamp=%r",
                 source_label,
                 event.get("record_id", "<unknown>"),
                 event.get("timestamp"),
             )
             continue
 
-        # Filter: [shift_start, shift_end)
+        # Strict boundary filtering: [shift_start, shift_end)
+        # shift_start is INCLUSIVE (>=), shift_end is EXCLUSIVE (<)
         if not (shift_start <= parsed_ts < shift_end):
             continue
 

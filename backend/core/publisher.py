@@ -1,11 +1,5 @@
 """
-publisher.py — Step 8: Render a .docx shift handover report.
-
-Rules:
-- Always render all 4 sections (Completed / In Progress / Blockers / Watch-list).
-- Empty sections show "Nothing to report." — never omit a section.
-- Raises RuntimeError loudly if export fails (non-zero exit in CLI / 500 in API).
-- Uses python-docx for document generation.
+publisher.py — Step 8: Render a .docx shift handover report with auto-summary paragraph and sections.
 """
 
 import os
@@ -19,49 +13,51 @@ from docx.shared import Pt, RGBColor, Inches
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 
-
-# ─── Section config ─────────────────────────────────────────────────────────────
+from .generator import generate_auto_paragraph_summary
 
 SECTION_CONFIG = [
     {
         "key": "completed",
         "title": "✅  Completed",
-        "heading_color": RGBColor(0x1A, 0x7A, 0x45),  # Dark green
+        "heading_color": RGBColor(0x1A, 0x7A, 0x45),
         "empty_msg": "Nothing to report.",
     },
     {
         "key": "in_progress",
         "title": "🔄  In Progress",
-        "heading_color": RGBColor(0x1D, 0x4E, 0xD8),  # Blue
+        "heading_color": RGBColor(0x1D, 0x4E, 0xD8),
         "empty_msg": "Nothing to report.",
     },
     {
         "key": "blockers",
         "title": "🚨  Blockers",
-        "heading_color": RGBColor(0xB9, 0x1C, 0x1C),  # Red
+        "heading_color": RGBColor(0xB9, 0x1C, 0x1C),
         "empty_msg": "Nothing to report.",
     },
     {
         "key": "watch_list",
         "title": "👁️  Watch-list",
-        "heading_color": RGBColor(0xD9, 0x77, 0x06),  # Amber
+        "heading_color": RGBColor(0xD9, 0x77, 0x06),
         "empty_msg": "Nothing to report.",
+    },
+    {
+        "key": "still_open",
+        "title": "⏳  Carried Over From Previous Shift",
+        "heading_color": RGBColor(0x7C, 0x3A, 0xED),
+        "empty_msg": "No carried-over items.",
     },
 ]
 
 
 def _set_paragraph_spacing(para, space_before: int = 6, space_after: int = 3):
-    """Set paragraph spacing in points."""
     para.paragraph_format.space_before = Pt(space_before)
     para.paragraph_format.space_after = Pt(space_after)
 
 
 def _add_horizontal_rule(doc: Document):
-    """Add a thin horizontal rule paragraph."""
     para = doc.add_paragraph()
     para.paragraph_format.space_before = Pt(2)
     para.paragraph_format.space_after = Pt(2)
-    # Add bottom border to simulate HR
     pPr = para._p.get_or_add_pPr()
     pBdr = OxmlElement("w:pBdr")
     bottom = OxmlElement("w:bottom")
@@ -74,7 +70,6 @@ def _add_horizontal_rule(doc: Document):
 
 
 def _format_event_line(item: dict) -> str:
-    """Format a single event item as a bullet line."""
     return f"[{item['record_id']}] {item['summary']}  (status: {item['status']}, {item['timestamp']})"
 
 
@@ -85,22 +80,6 @@ def render_docx(
     shift_end: Optional[datetime] = None,
     generated_at: Optional[datetime] = None,
 ) -> str:
-    """
-    Render the shift handover report as a .docx file.
-
-    Args:
-        sections:     Output from generator.generate_sections() — 4-key dict.
-        output_path:  Absolute path where the .docx should be saved.
-        shift_start:  Optional shift start datetime for the report header.
-        shift_end:    Optional shift end datetime for the report header.
-        generated_at: Optional generation timestamp; defaults to now (UTC).
-
-    Returns:
-        The resolved output_path string.
-
-    Raises:
-        RuntimeError: If the document cannot be created or written.
-    """
     try:
         if generated_at is None:
             from datetime import timezone
@@ -108,14 +87,13 @@ def render_docx(
 
         doc = Document()
 
-        # ── Page margins ─────────────────────────────────────────────────────
         for section in doc.sections:
             section.top_margin = Inches(0.75)
             section.bottom_margin = Inches(0.75)
             section.left_margin = Inches(1.0)
             section.right_margin = Inches(1.0)
 
-        # ── Document Title ────────────────────────────────────────────────────
+        # Title
         title_para = doc.add_paragraph()
         title_run = title_para.add_run("Shift Handover Report")
         title_run.bold = True
@@ -124,7 +102,7 @@ def render_docx(
         title_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _set_paragraph_spacing(title_para, space_before=0, space_after=4)
 
-        # ── Subtitle / metadata ───────────────────────────────────────────────
+        # Header Metadata
         meta_lines = []
         if shift_start and shift_end:
             meta_lines.append(
@@ -141,29 +119,32 @@ def render_docx(
             meta_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
             _set_paragraph_spacing(meta_para, space_before=0, space_after=2)
 
-        # Summary line
-        total = sum(len(v) for v in sections.values())
-        summary_para = doc.add_paragraph()
-        summary_run = summary_para.add_run(
-            f"Total items: {total}  |  "
-            + "  |  ".join(
-                f"{cfg['title'].split('  ')[1]}: {len(sections.get(cfg['key'], []))}"
-                for cfg in SECTION_CONFIG
-            )
-        )
-        summary_run.font.size = Pt(9)
-        summary_run.font.color.rgb = RGBColor(0x4B, 0x55, 0x63)
-        summary_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        _set_paragraph_spacing(summary_para, space_before=2, space_after=8)
+        _add_horizontal_rule(doc)
+
+        # Executive Auto Summary Paragraph (Stretch feature)
+        summary_text = generate_auto_paragraph_summary(sections)
+        exec_para = doc.add_paragraph()
+        exec_run_label = exec_para.add_run("Executive Summary: ")
+        exec_run_label.bold = True
+        exec_run_label.font.size = Pt(10)
+        exec_run_label.font.color.rgb = RGBColor(0x1E, 0x29, 0x3B)
+
+        exec_run = exec_para.add_run(summary_text)
+        exec_run.font.size = Pt(10)
+        exec_run.font.color.rgb = RGBColor(0x33, 0x41, 0x55)
+        _set_paragraph_spacing(exec_para, space_before=6, space_after=8)
 
         _add_horizontal_rule(doc)
 
-        # ── Sections ──────────────────────────────────────────────────────────
+        # Sections
         for cfg in SECTION_CONFIG:
             section_key = cfg["key"]
             items = sections.get(section_key, [])
 
-            # Section heading
+            # Skip still_open section if completely empty to keep report clean
+            if section_key == "still_open" and not items:
+                continue
+
             heading_para = doc.add_paragraph()
             heading_run = heading_para.add_run(cfg["title"])
             heading_run.bold = True
@@ -172,7 +153,6 @@ def render_docx(
             _set_paragraph_spacing(heading_para, space_before=12, space_after=4)
 
             if not items:
-                # Empty section
                 empty_para = doc.add_paragraph()
                 empty_run = empty_para.add_run(cfg["empty_msg"])
                 empty_run.italic = True
@@ -189,18 +169,15 @@ def render_docx(
 
             _add_horizontal_rule(doc)
 
-        # ── Footer note ───────────────────────────────────────────────────────
         footer_para = doc.add_paragraph()
         footer_run = footer_para.add_run(
-            "This report was auto-generated by the 3HPS Shift Handover System. "
-            "Data sourced from: tickets, incidents, chat."
+            "This report was auto-generated by the 3HPS Shift Handover System."
         )
         footer_run.font.size = Pt(8)
         footer_run.font.color.rgb = RGBColor(0xC0, 0xC0, 0xC0)
         footer_para.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _set_paragraph_spacing(footer_para, space_before=6, space_after=0)
 
-        # ── Save ──────────────────────────────────────────────────────────────
         output_path = str(output_path)
         os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
         doc.save(output_path)

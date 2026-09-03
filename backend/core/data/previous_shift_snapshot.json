@@ -1,0 +1,18 @@
+[
+  {
+    "source": "tickets",
+    "record_id": "TKT-PS-001",
+    "timestamp": "2024-01-14T22:30:00Z",
+    "summary": "TKT-PS-001: Overnight batch job failed — still unresolved at handover",
+    "status": "open",
+    "_carry_forward": true
+  },
+  {
+    "source": "incidents",
+    "record_id": "INC-PS-001",
+    "timestamp": "2024-01-14T23:15:00Z",
+    "summary": "INC-PS-001: P3 — Search index rebuild stalled at 67%, monitoring",
+    "status": "monitoring",
+    "_carry_forward": true
+  }
+]
