@@ -259,9 +259,8 @@ export default function App() {
             addLog(`[${step}] ${message}`, status === 'error' ? 'error' : status === 'done' ? 'success' : 'info')
 
             if (file_b64 && filename) {
-              setResult({ file_b64, filename, summary })
+              setResult({ file_b64, filename, summary, slack_summary: evt.slack_summary })
               addLog(`Report ready: ${filename}`, 'success')
-              // Auto-download when complete
               downloadB64(file_b64, filename)
             }
 
@@ -604,13 +603,42 @@ export default function App() {
             </div>
 
             {hasResult && (
-              <button
-                id="btn-download"
-                className="btn-download"
-                onClick={() => downloadB64(result.file_b64, result.filename)}
-              >
-                <FiDownload /> Download {result.filename}
-              </button>
+              <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button
+                    id="btn-download"
+                    className="btn-download"
+                    style={{ flex: 1, marginTop: 0 }}
+                    onClick={() => downloadB64(result.file_b64, result.filename)}
+                  >
+                    <FiDownload /> Download {result.filename}
+                  </button>
+
+                  {result.slack_summary && (
+                    <button
+                      className="btn-download"
+                      style={{ margin: 0, padding: '12px 20px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border-hi)' }}
+                      onClick={() => {
+                        navigator.clipboard.writeText(result.slack_summary)
+                        addLog('Slack summary copied to clipboard!', 'success')
+                      }}
+                    >
+                      <FiFileText /> Copy Slack Summary
+                    </button>
+                  )}
+                </div>
+
+                {result.slack_summary && (
+                  <div className="activity-log" style={{ maxHeight: 180, background: 'rgba(0,0,0,0.8)', border: '1px solid var(--glass-border)' }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-secondary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <FiFileText /> SLACK FORMATTED SUMMARY PREVIEW
+                    </div>
+                    <pre style={{ fontFamily: 'var(--font-mono)', fontSize: 11, whiteSpace: 'pre-wrap', color: '#ffffff', margin: 0 }}>
+                      {result.slack_summary}
+                    </pre>
+                  </div>
+                )}
+              </div>
             )}
           </div>
         )}

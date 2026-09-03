@@ -18,7 +18,7 @@ pip install -r ../requirements.txt
 # Run migrations
 python manage.py migrate
 
-# Run unit tests (12 tests)
+# Run complete unit test suite (14 tests)
 python manage.py test core
 
 # Start Django development server (Port 8000)
@@ -45,14 +45,16 @@ Open **http://localhost:5173** in your browser to interact with the real-time pr
 ## Key Features
 
 - **No-DB Event Processing**: Reads and normalizes activity directly from JSON/HTTP sources without DB event state.
+- **Role-Based Handover Workflow**: Staff members draft & submit handovers (`pending_approval`). Managers review and approve (`approved`) before document generation is unlocked.
+- **Real-Life Jira Issue Tracker**: Connects to Jira Cloud REST API (`JIRA_DOMAIN/JIRA_EMAIL/JIRA_API_TOKEN`) or falls back gracefully to sample Jira worklogs.
 - **Deduplication Engine**: Groups events by `(source, record_id)` and sorts by timestamp to preserve the latest state.
 - **Strict Shift Window Filtering**: `[shift_start, shift_end)` — start inclusive, end exclusive.
 - **4 Section Categorization**: Completed, In Progress, Blockers, Watch-list.
-- **Carry-Forward Snapshot Support**: Surfacing open items from previous shifts (`previous_shift_snapshot.json`).
+- **Carry-Forward Snapshot Support**: Surfacing open items from previous shifts (`previous_shift_snapshot.json`) bounded to 24h prior.
 - **Config-Driven Sources (`sources.json`)**: Add file or HTTP remote API sources with zero code changes.
 - **HTTP Timeout Hardening**: Gracefully skips unreachable HTTP remote APIs or malformed events without crashing.
 - **Real-Time Progress Streaming (SSE)**: Pushes step-by-step progress to the React frontend.
-- **Multiple Output Formats**: Generates `.docx` documents (with auto-summary paragraph) and Slack-formatted markdown text files.
+- **Multiple Output Formats**: Generates `.docx` documents (with auto-summary paragraph) and Slack-formatted markdown text summaries with one-click copy.
 
 ---
 
@@ -76,7 +78,11 @@ python manage.py generate_report \
 ## REST API Endpoints
 
 - `POST /api/generate-report/`: Generates `.docx` file attachment or Slack text summary (`"format": "slack"`).
-- `POST /api/generate-report/stream/`: Server-Sent Events stream for real-time progress updates.
+- `POST /api/generate-report/stream/`: Server-Sent Events stream for real-time progress updates & base64 report payload.
+- `POST /api/approvals/submit/`: Staff action — Submits shift handover draft for Manager approval (`status: pending_approval`).
+- `POST /api/approvals/review/`: Manager action — Approves (`status: approved`) or rejects a handover request.
+- `GET /api/approvals/list/`: Returns all submitted approval requests.
+- `GET /api/jira/events/`: Fetches live Jira issue updates & worklogs.
 - `GET /api/health/`: Health check endpoint (`{"status": "ok"}`).
 
 ---
@@ -93,12 +99,14 @@ python manage.py generate_report \
 │   │   ├── generator.py
 │   │   ├── publisher.py
 │   │   ├── http_source.py
+│   │   ├── jira_tracker.py
+│   │   ├── approval_workflow.py
 │   │   ├── shared_utils.py
 │   │   ├── views.py
 │   │   ├── progress_stream.py
 │   │   └── tests.py
 │   └── manage.py
-├── frontend/               # Vite + React frontend UI
+├── frontend/               # Vite + React Liquid Glass UI
 ├── REPORT.md               # Detailed evaluation report
 └── requirements.txt
 ```
