@@ -35,9 +35,10 @@ def generate_report(request: Request):
 
     try:
         if scenario:
-            events, shift_start, shift_end = load_scenario(
+            raw_events, shift_start, shift_end = load_scenario(
                 scenario, body.get("shift_start"), body.get("shift_end")
             )
+            events = fetch_activity(shift_start, shift_end, events=raw_events)
         else:
             shift_start = parse_utc(body.get("shift_start", ""), "shift_start")
             shift_end = parse_utc(body.get("shift_end", ""), "shift_end")

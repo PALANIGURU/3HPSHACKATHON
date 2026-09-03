@@ -444,6 +444,7 @@ body {
 .count-pill.in_progress{ background: rgba(79,126,248,0.08); border-color: rgba(79,126,248,0.25); color: #7ba6fd; }
 .count-pill.blockers   { background: rgba(239,68,68,0.08);  border-color: rgba(239,68,68,0.25);  color: #f87171; }
 .count-pill.watch_list { background: rgba(245,158,11,0.08); border-color: rgba(245,158,11,0.25); color: #fbbf24; }
+.count-pill.still_open { background: rgba(124,58,237,0.08); border-color: rgba(124,58,237,0.25); color: #a78bfa; }
 
 /* ─── Download button ───────────────────────────────────────────────────── */
 .btn-download {
@@ -505,6 +506,7 @@ body {
 .stat-cell.c-in_progress .stat-value{ color: #7ba6fd; }
 .stat-cell.c-blockers   .stat-value { color: #f87171; }
 .stat-cell.c-watch_list .stat-value { color: #fbbf24; }
+.stat-cell.c-still_open .stat-value { color: #a78bfa; }
 .stat-cell.c-total      .stat-value { color: var(--text-primary); }
 
 /* ─── Activity log ──────────────────────────────────────────────────────── */

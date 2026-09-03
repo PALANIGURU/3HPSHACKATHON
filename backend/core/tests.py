@@ -224,6 +224,20 @@ class DRFAPIEndpointTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn("SHIFT HANDOVER SUMMARY", response.content.decode("utf-8"))
 
+    def test_generate_report_api_scenario_narrow_window_override(self):
+        """Regression test: verify narrow window override on scenario filters out out-of-window events."""
+        url = reverse("generate-report")
+        # busy scenario defaults to 07:00-12:00 (15 raw events -> 10 deduped items)
+        # Override to 07:00-08:00 narrow window (only 4 events fall in 07:00-08:00)
+        payload = {
+            "scenario": "busy",
+            "shift_start": "2024-01-15T07:00:00Z",
+            "shift_end": "2024-01-15T08:00:00Z",
+        }
+        response = self.client.post(url, data=payload, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["X-Report-Items"], "4")
+
     def test_generate_report_api_invalid_window_returns_400(self):
         """Verify invalid shift window returns 400 Bad Request."""
         url = reverse("generate-report")

@@ -48,12 +48,13 @@ function CountPills({ counts }) {
     in_progress: { label: '🔄 In Progress', cls: 'in_progress' },
     blockers:    { label: '🚨 Blockers',    cls: 'blockers' },
     watch_list:  { label: '👁 Watch-list',  cls: 'watch_list' },
+    still_open:  { label: '⏳ Carried Over', cls: 'still_open' },
   }
   return (
     <div className="counts-row">
-      {Object.entries(labels).map(([k, { label, cls }]) => (
+      {Object.entries(labels).map(([k, { label, cls }]) => counts[k] > 0 && (
         <span key={k} className={`count-pill ${cls}`}>
-          {label}: {counts[k] ?? 0}
+          {label}: {counts[k]}
         </span>
       ))}
     </div>
@@ -66,8 +67,9 @@ function StatsBar({ counts }) {
     { k: 'in_progress', label: 'In Progress',  icon: '🔄' },
     { k: 'blockers',    label: 'Blockers',     icon: '🚨' },
     { k: 'watch_list',  label: 'Watch-list',   icon: '👁️' },
+    { k: 'still_open',  label: 'Carried Over', icon: '⏳' },
   ]
-  const total = Object.values(counts).reduce((a, b) => a + b, 0)
+  const total = Object.entries(counts).reduce((a, [k, v]) => k !== 'still_open' ? a + v : a, 0)
   return (
     <div className="stats-bar">
       <div className="stat-cell c-total">

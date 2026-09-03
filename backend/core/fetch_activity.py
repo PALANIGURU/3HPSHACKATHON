@@ -123,20 +123,22 @@ def fetch_activity(
                     all_events.extend(_process_event_list(raw, url, shift_start, shift_end))
 
     # Incorporate previous shift carry-forward snapshot (stretch feature)
+    # Filtered to items prior to shift_end AND within 24 hours prior to shift_start to prevent indefinite resurfacing
     if include_snapshot and events is None:
         if data_dir is None:
             data_dir = Path(__file__).parent / "data"
         snapshot_path = Path(data_dir) / "previous_shift_snapshot.json"
         if snapshot_path.exists():
             try:
+                from datetime import timedelta
+                snapshot_floor = shift_start - timedelta(hours=24)
                 with open(snapshot_path, "r", encoding="utf-8") as f:
                     snap_raw = json.load(f)
                 if isinstance(snap_raw, list):
-                    # Process snapshot items without restricting to shift_start (they originate prior to shift)
                     for item in snap_raw:
                         if isinstance(item, dict) and _validate_event(item, str(snapshot_path)):
                             parsed_ts = _parse_utc(item["timestamp"])
-                            if parsed_ts and parsed_ts < shift_end:
+                            if parsed_ts and snapshot_floor <= parsed_ts < shift_end:
                                 norm = dict(item)
                                 norm["_parsed_timestamp"] = parsed_ts
                                 norm["_still_open"] = True
