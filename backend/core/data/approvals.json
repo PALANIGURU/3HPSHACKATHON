@@ -18,7 +18,7 @@
       "shift_start": "2024-01-15T07:00:00Z",
       "shift_end": "2024-01-15T12:00:00Z",
       "submitted_by": "John (Shift Engineer)",
-      "submitted_at": "2026-09-03T14:26:22.873732+00:00",
+      "submitted_at": "2026-09-03T14:39:03.255737+00:00",
       "notes": "EU 500 error fix deployed; database pool connection resolved.",
       "scenario": "",
       "status": "pending_approval",

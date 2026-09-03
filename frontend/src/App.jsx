@@ -194,8 +194,17 @@ export default function App() {
       })
       if (res.ok) {
         const data = await res.json()
-        addLog(`Handover submitted for approval! Request ID: ${data.request.id}`, 'success')
-        fetchApprovals()
+        addLog(`Handover submitted! Switched to Manager Mode for review. Request ID: ${data.request.id}`, 'success')
+        await fetchApprovals()
+
+        // Auto-navigate to Manager Mode and select the new submission
+        setRole('manager')
+        if (data.request) {
+          setSelectedReq(data.request)
+        }
+
+        // Smooth scroll to top/approval list for immediate Manager action
+        window.scrollTo({ top: 120, behavior: 'smooth' })
       } else {
         addLog('Failed to submit handover request.', 'error')
       }
