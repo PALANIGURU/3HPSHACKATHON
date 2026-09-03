@@ -5,12 +5,25 @@
       "shift_start": "2024-01-15T07:00:00Z",
       "shift_end": "2024-01-15T12:00:00Z",
       "submitted_by": "John Staff",
-      "submitted_at": "2026-09-03T14:09:24.272975+00:00",
+      "submitted_at": "2026-09-03T14:28:34.339853+00:00",
       "notes": "Completed EU login fix and reviewed DB pool.",
       "scenario": null,
       "status": "approved",
       "reviewed_by": "Jane Manager",
-      "reviewed_at": "2026-09-03T14:09:24.299865+00:00",
+      "reviewed_at": "2026-09-03T14:28:34.362727+00:00",
+      "rejection_reason": null
+    },
+    "REQ-20240115T0700-john(shiftengineer)": {
+      "id": "REQ-20240115T0700-john(shiftengineer)",
+      "shift_start": "2024-01-15T07:00:00Z",
+      "shift_end": "2024-01-15T12:00:00Z",
+      "submitted_by": "John (Shift Engineer)",
+      "submitted_at": "2026-09-03T14:26:22.873732+00:00",
+      "notes": "EU 500 error fix deployed; database pool connection resolved.",
+      "scenario": "",
+      "status": "pending_approval",
+      "reviewed_by": null,
+      "reviewed_at": null,
       "rejection_reason": null
     }
   }

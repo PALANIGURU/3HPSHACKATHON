@@ -44,6 +44,17 @@ def _generate_stream(body: dict):
     time.sleep(0.2)
 
     try:
+        request_id = body.get("request_id")
+        if request_id:
+            from .approval_workflow import check_approval_status
+            req_status = check_approval_status(request_id)
+            if not req_status:
+                yield emit("validate", "error", f"Approval request '{request_id}' not found.", 0)
+                return
+            if req_status.get("status") != "approved":
+                yield emit("validate", "error", f"Generation blocked: Request '{request_id}' status is '{req_status.get('status')}'. Manager approval required.", 0)
+                return
+
         scenario = (body.get("scenario") or "").strip().lower() or None
         if scenario:
             raw_events, shift_start, shift_end = load_scenario(

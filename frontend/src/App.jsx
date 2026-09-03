@@ -112,7 +112,7 @@ function StatsBar({ counts }) {
 }
 
 export default function App() {
-  const [role,       setRole]       = useState('staff') // 'staff' | 'manager'
+  const [role,       setRole]       = useState('staff')
   const [shiftStart, setShiftStart] = useState(DEFAULT_START)
   const [shiftEnd,   setShiftEnd]   = useState(DEFAULT_END)
   const [scenario,   setScenario]   = useState('busy')
@@ -204,38 +204,19 @@ export default function App() {
     }
   }
 
-  // Manager action: Approve or reject
-  const handleManagerReview = async (reqId, decision) => {
-    try {
-      const res = await fetch('/api/approvals/review/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          request_id: reqId,
-          manager_name: 'Manager (Jane Doe)',
-          decision,
-          reason: decision === 'reject' ? 'Needs additional details on database pool status.' : '',
-        }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        addLog(`Request ${reqId} ${decision.toUpperCase()}ED by Manager`, 'success')
-        fetchApprovals()
-      }
-    } catch (err) {
-      addLog(`Review error: ${err.message}`, 'error')
-    }
-  }
-
-  const handleGenerate = useCallback(async () => {
+  // Trigger report generation stream for an approved request
+  const startGenerationStream = useCallback(async (reqToUse) => {
     if (running) return
     reset()
     setRunning(true)
-    addLog('Starting report generation stream...', 'info')
+    addLog(`Starting approved report generation for ${reqToUse.id}...`, 'info')
 
-    const body = { shift_start: shiftStart, shift_end: shiftEnd }
-    if (scenario) body.scenario = scenario
-    if (selectedReq) body.request_id = selectedReq.id
+    const body = {
+      shift_start: reqToUse.shift_start || shiftStart,
+      shift_end: reqToUse.shift_end || shiftEnd,
+      request_id: reqToUse.id,
+    }
+    if (reqToUse.scenario) body.scenario = reqToUse.scenario
 
     try {
       const response = await fetch('/api/generate-report/stream/', {
@@ -280,6 +261,8 @@ export default function App() {
             if (file_b64 && filename) {
               setResult({ file_b64, filename, summary })
               addLog(`Report ready: ${filename}`, 'success')
+              // Auto-download when complete
+              downloadB64(file_b64, filename)
             }
 
             if (status === 'error') {
@@ -295,7 +278,37 @@ export default function App() {
     } finally {
       setRunning(false)
     }
-  }, [running, shiftStart, shiftEnd, scenario, selectedReq, reset, addLog])
+  }, [running, shiftStart, shiftEnd, reset, addLog])
+
+  // Manager action: Approve or reject
+  const handleManagerReview = async (reqId, decision) => {
+    try {
+      const res = await fetch('/api/approvals/review/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          request_id: reqId,
+          manager_name: 'Manager (Jane Doe)',
+          decision,
+          reason: decision === 'reject' ? 'Needs additional details on database pool status.' : '',
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        const updatedReq = data.request
+        addLog(`Request ${reqId} ${decision.toUpperCase()}ED by Manager`, 'success')
+        fetchApprovals()
+
+        // If approved, trigger report generation immediately!
+        if (decision === 'approve') {
+          setSelectedReq(updatedReq)
+          startGenerationStream(updatedReq)
+        }
+      }
+    } catch (err) {
+      addLog(`Review error: ${err.message}`, 'error')
+    }
+  }
 
   const finalCounts = (() => {
     if (result?.summary?.counts) return result.summary.counts
@@ -360,8 +373,8 @@ export default function App() {
           <h1>{role === 'staff' ? 'Draft & Submit Handover' : 'Manager Handover Approval Portal'}</h1>
           <p>
             {role === 'staff'
-              ? 'Staff members draft shift handover notes, track live Jira worklogs, and submit handovers for Manager review.'
-              : 'Managers review submitted shift handovers, approve or request revisions, and trigger final .docx report exports.'}
+              ? 'Staff members draft shift handover notes, track live Jira worklogs, and submit handovers to Manager for approval.'
+              : 'Managers review submitted shift handovers, approve or reject, and trigger final .docx report exports.'}
           </p>
         </section>
 
@@ -425,7 +438,7 @@ export default function App() {
                           style={{ margin: 0, padding: '6px 12px', fontSize: 12 }}
                           onClick={() => handleManagerReview(req.id, 'approve')}
                         >
-                          <FiCheck /> Approve
+                          <FiCheck /> Approve & Generate
                         </button>
                         <button
                           className="btn-download"
@@ -440,16 +453,13 @@ export default function App() {
                     {req.status === 'approved' && (
                       <button
                         className="btn-download"
-                        style={{ margin: 0, padding: '6px 12px', fontSize: 12 }}
+                        style={{ margin: 0, padding: '6px 14px', fontSize: 12, background: '#ffffff', color: '#000000', fontWeight: 800 }}
                         onClick={() => {
                           setSelectedReq(req)
-                          setShiftStart(req.shift_start)
-                          setShiftEnd(req.shift_end)
-                          if (req.scenario) setScenario(req.scenario)
-                          addLog(`Selected approved request ${req.id} for report generation.`, 'info')
+                          startGenerationStream(req)
                         }}
                       >
-                        Select to Generate
+                        <FiDownload /> Generate & Download Approved Report
                       </button>
                     )}
                   </div>
@@ -463,7 +473,7 @@ export default function App() {
         <div className="card">
           <div className="card-title">
             <FiSliders className="card-title-icon" />
-            {role === 'staff' ? 'Draft Handover & Submit to Manager' : 'Generate Approved Report'}
+            {role === 'staff' ? 'Draft Handover & Submit to Manager' : 'Generate Approved Handover Document'}
           </div>
 
           <div className="form-grid">
@@ -537,12 +547,20 @@ export default function App() {
             <button
               id="btn-generate"
               className="btn-generate"
-              onClick={handleGenerate}
-              disabled={running || backendOk === false}
+              onClick={() => {
+                const approvedReq = approvals.find(a => a.status === 'approved')
+                if (approvedReq) {
+                  setSelectedReq(approvedReq)
+                  startGenerationStream(approvedReq)
+                } else {
+                  addLog('No Manager-approved handover request available yet.', 'error')
+                }
+              }}
+              disabled={running || backendOk === false || !approvals.some(a => a.status === 'approved')}
               style={{ marginTop: 24 }}
             >
               {running ? (
-                <><FiRefreshCw className="spin-icon" /> Generating… {pct}%</>
+                <><FiRefreshCw className="spin-icon" /> Generating Approved Report… {pct}%</>
               ) : overallDone ? (
                 <><FiCheckCircle /> Generate Again</>
               ) : (
